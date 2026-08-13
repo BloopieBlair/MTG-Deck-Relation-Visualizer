@@ -9,6 +9,8 @@
 
 An interactive visualizer and analytical toolkit for **Magic: The Gathering** deckbuilding. Transform static decklists (text, CSV, or Commander formats) into dynamic **force-directed graphs** that map out card synergies, mechanical engines, mana requirements, and early-game plays.
 
+![MTG Deck Relation Visualizer Interface](images/Capture.PNG)
+
 ---
 
 ## 🌟 Key Features
@@ -19,7 +21,7 @@ An interactive visualizer and analytical toolkit for **Magic: The Gathering** de
 * **Commander Centricity**: Designate your Commander to pin it at the center of the graph with a visual crown badge, showing how your deck orbits its primary engine.
 * **Orphan & Weak Connection Highlighting**: Instantly detect isolated card clusters or cards with only a single connection to the rest of the deck for streamlining cuts.
 
-### 🤖 2. Gemini AI Deck Intelligence
+### 🤖 2. Gemini & Local AI Deck Intelligence
 * **Smart Parsing**: Robustly parses raw text, Arena exports, or CSV decklists with AI error-correction.
 * **Deep Mechanical Tagging**: Extracts custom game mechanics beyond standard Scryfall tags (e.g. *Win Condition*, *Board Wipe*, *Sacrifice Outlet*, *Engine*).
 * **Strategic Deck Analysis**: Generates comprehensive AI deck reports evaluating archetype, power level, curve balance, win conditions, and concrete upgrade paths.
@@ -29,15 +31,22 @@ An interactive visualizer and analytical toolkit for **Magic: The Gathering** de
 * **Fastest-Path Strategy**: Finds optimal card play paths to get your Commander onto the field, establish mana engines, or find removal.
 * **Visual State Tree**: Explore branching decision nodes interactively to test goldfishing performance.
 
+![MTG Goldfish Simulator Monte Carlo Stats](images/Capture4.PNG)
+![MTG Goldfish Simulator Gameplay Explorer](images/Capture5.PNG)
+
 ### 📊 4. Mana & Statistical Dashboard
 * **Mana Pip vs. Source Breakdown**: Compares total colored mana symbol requirements against land mana production capacity.
 * **Hypergeometric Probability Calculator**: Computes opening 7-card hand draw odds for every card category.
 * **Interactive Mana Curve**: Inspect deck distribution across converted mana costs (CMC) with detailed popup card lists.
 
-### 🔍 5. Discovery & Search Tools
+![Mana Curve Dashboard & Hypergeometric Analysis](images/Capture2.PNG)
+
+### 🔍 5. Discovery Tools & MTG Arena Collection Sync
 * **Pinned Multi-Term Search**: Pin up to 3 search terms simultaneously with color-coded node highlights to inspect synergy overlaps.
 * **Scryfall High-Res Card Previews**: Hover or click any node to pull high-resolution card artwork, oracle text, legalities, and rulings via Scryfall API.
 * **MTG Arena Collection Drawer**: Sync local MTG Arena collection logs to check owned cards directly inside the visualizer.
+
+![MTG Arena Collection Sync](images/Capture3.PNG)
 
 ---
 
@@ -59,6 +68,12 @@ mtg-deck-relation-visualizer/
 │   ├── goldfishSimulator.ts     # BFS game state simulation engine
 │   ├── csvParser.ts             # Robust CSV decklist parser
 │   └── parse_mtga.py            # Local MTG Arena log parser script
+├── images/                      # Documentation screenshots
+│   ├── Capture.PNG              # Main visualizer interface
+│   ├── Capture2.PNG             # Mana curve & draw statistics
+│   ├── Capture3.PNG             # MTG Arena collection drawer
+│   ├── Capture4.PNG             # Goldfish simulator Monte Carlo stats
+│   └── Capture5.PNG             # Goldfish simulator gameplay explorer
 ├── examples/                    # Sample decklists
 │   └── Slivers.txt              # Sample 100-card Commander decklist
 ├── App.tsx                      # Main application shell & state hub
@@ -93,8 +108,8 @@ mtg-deck-relation-visualizer/
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/your-username/mtg-deck-relation-visualizer.git
-   cd mtg-deck-relation-visualizer
+   git clone https://github.com/BloopieBlair/MTG-Deck-Relation-Visualizer.git
+   cd MTG-Deck-Relation-Visualizer
    ```
 
 2. **Install dependencies**:
