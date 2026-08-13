@@ -93,6 +93,8 @@ mtg-deck-relation-visualizer/
 
 - **Node.js** (v18.0.0 or higher)
 - **npm** (v9.0.0 or higher)
+- **Python** (v3.x.x or higher)
+- **Ollama** (4-8B Model of your choice, I used DeepSeek-R1-0528-Qwen3-8B:latest, your mileage may vary)
 
 ### ⚡ Quick Start Options
 
