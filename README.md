@@ -9,7 +9,7 @@
 
 An interactive visualizer and analytical toolkit for **Magic: The Gathering** deckbuilding. Transform static decklists (text, CSV, or Commander formats) into dynamic **force-directed graphs** that map out card synergies, mechanical engines, mana requirements, and early-game plays.
 
-![MTG Deck Relation Visualizer Interface](images/Capture.PNG)
+![MTG Deck Relation Visualizer Interface](Images/Capture.PNG)
 
 ---
 
@@ -31,22 +31,22 @@ An interactive visualizer and analytical toolkit for **Magic: The Gathering** de
 * **Fastest-Path Strategy**: Finds optimal card play paths to get your Commander onto the field, establish mana engines, or find removal.
 * **Visual State Tree**: Explore branching decision nodes interactively to test goldfishing performance.
 
-![MTG Goldfish Simulator Monte Carlo Stats](images/Capture4.PNG)
-![MTG Goldfish Simulator Gameplay Explorer](images/Capture5.PNG)
+![MTG Goldfish Simulator Monte Carlo Stats](Images/Capture4.PNG)
+![MTG Goldfish Simulator Gameplay Explorer](Images/Capture5.PNG)
 
 ### 📊 4. Mana & Statistical Dashboard
 * **Mana Pip vs. Source Breakdown**: Compares total colored mana symbol requirements against land mana production capacity.
 * **Hypergeometric Probability Calculator**: Computes opening 7-card hand draw odds for every card category.
 * **Interactive Mana Curve**: Inspect deck distribution across converted mana costs (CMC) with detailed popup card lists.
 
-![Mana Curve Dashboard & Hypergeometric Analysis](images/Capture2.PNG)
+![Mana Curve Dashboard & Hypergeometric Analysis](Images/Capture2.PNG)
 
 ### 🔍 5. Discovery Tools & MTG Arena Collection Sync
 * **Pinned Multi-Term Search**: Pin up to 3 search terms simultaneously with color-coded node highlights to inspect synergy overlaps.
 * **Scryfall High-Res Card Previews**: Hover or click any node to pull high-resolution card artwork, oracle text, legalities, and rulings via Scryfall API.
 * **MTG Arena Collection Drawer**: Sync local MTG Arena collection logs to check owned cards directly inside the visualizer.
 
-![MTG Arena Collection Sync](images/Capture3.PNG)
+![MTG Arena Collection Sync](Images/Capture3.PNG)
 
 ---
 
@@ -68,7 +68,7 @@ mtg-deck-relation-visualizer/
 │   ├── goldfishSimulator.ts     # BFS game state simulation engine
 │   ├── csvParser.ts             # Robust CSV decklist parser
 │   └── parse_mtga.py            # Local MTG Arena log parser script
-├── images/                      # Documentation screenshots
+├── Images/                      # Documentation screenshots
 │   ├── Capture.PNG              # Main visualizer interface
 │   ├── Capture2.PNG             # Mana curve & draw statistics
 │   ├── Capture3.PNG             # MTG Arena collection drawer
