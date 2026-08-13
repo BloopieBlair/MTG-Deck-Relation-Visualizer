@@ -1,0 +1,6 @@
+{
+  "name": "MTG Deck Relation Visualizer",
+  "description": "Upload your Magic: The Gathering decklist as a .txt file. The app parses card names and uses predefined card data to identify keywords. Define keywords and their colors to visualize shared abilities and synergies as a connected graph of cards.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}

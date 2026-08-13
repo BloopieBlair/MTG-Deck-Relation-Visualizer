@@ -1,0 +1,33 @@
+{
+  "name": "mtg-deck-relation-visualizer",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "18.2.0",
+    "@google/genai": "1.4.0",
+    "react-dom": "18.2.0",
+    "d3-force": "^3.0.0",
+    "d3-zoom": "^3.0.0",
+    "d3-drag": "^3.0.0",
+    "d3-selection": "^3.0.0",
+    "uuid": "^9.0.1",
+    "d3-polygon": "^3.0.1",
+    "d3-transition": "^3.0.1",
+    "jspdf": "^2.5.1",
+    "d3": "^7.9.0",
+    "d3-hierarchy": "^3.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}

@@ -1,0 +1,78 @@
+Commander
+1 Anim Pakal, Thousandth Moon (LCI) 223
+
+Deck
+1 Warden of the Inner Sky (LCI) 43
+14 Plains (LTR) 263
+13 Mountain (LTR) 269
+1 Lunarch Veteran (MID) 27
+1 Altar of the Brood (KTK) 216
+1 Soul Warden (M10) 34
+1 Anointer Priest (AKR) 3
+1 Blind Obedience (WOT) 1
+1 Land Tax (WOT) 9
+1 Mana Tithe (STA) 8
+1 Panharmonicon (KLR) 258
+1 Terramorphic Expanse (ONE) 261
+1 Homestead Courage (MID) 24
+1 Light of Hope (IKO) 20
+1 Ajani's Pridemate (WAR) 4
+1 Feat of Resistance (M21) 19
+1 Hallowed Priest (ANB) 9
+1 Dawn of a New Age (LTR) 5
+1 Abzan Falconer (J21) 2
+1 Rosie Cotton of South Lane (LTR) 27
+1 Light of Promise (M21) 25
+1 Aurelia, the Law Above (MKM) 188
+1 Mondrak, Glory Dominus (ONE) 23
+1 Serra Redeemer (DMU) 282
+1 Angelic Gift (M20) 5
+1 Bloodlust Inciter (AKR) 140
+1 Diamond Pick-Axe (LCI) 143
+1 Rabbit Battery (NEO) 157
+1 Cleric Class (AFR) 6
+1 Ragavan, Nimble Pilferer (MUL) 86
+1 Shock (ANB) 84
+1 Strike It Rich (MH2) 143
+1 Petrify (LCI) 30
+1 Benalish Knight-Counselor (Y23) 1
+1 Recommission (BRO) 22
+1 Smothering Tithe (WOT) 13
+1 Sticky Fingers (SNC) 124
+1 Demand Answers (MKM) 122
+1 Veil of Assimilation (ONE) 37
+1 Quarrel's End (LTR) 141
+1 Elesh Norn, Mother of Machines (ONE) 10
+1 Aurelia, the Warleader (FDN) 651
+1 Kumano Faces Kakkazan (NEO) 152
+1 Hopeful Initiate (VOW) 20
+1 Luminarch Aspirant (ZNR) 24
+1 Anointed Procession (AKR) 2
+1 Captivating Cave (LCI) 268
+1 Mandible Justiciar (ONE) 21
+1 Agatha's Soul Cauldron (WOE) 242
+1 Mox Amber (BRR) 35
+1 Reinforced Ronin (NEO) 158
+1 Impact Tremors (WOT) 44
+1 Boundary Lands Ranger (WOE) 123
+1 Ajani's Welcome (M19) 6
+1 Brave the Elements (M14) 10
+1 Impassioned Orator (ANB) 10
+1 Kor Celebrant (ZNR) 22
+1 Reckless Fireweaver (KLR) 141
+1 Intangible Virtue (WOT) 6
+1 Harmonious Archon (ELD) 17
+1 Sundown Pass (VOW) 266
+1 Battlefield Forge (BRO) 257
+1 Command Tower (ANB) 118
+1 Karn's Bastion (WAR) 248
+1 Swallow Whole (IKO) 35
+1 Great Hall of the Citadel (LTR) 254
+1 Ornithopter (BRR) 37
+1 Case of the Gateway Express (MKM) 8
+1 Not on My Watch (MKM) 28
+1 Crusader of Odric (FDN) 569
+1 Connecting the Dots (MKM) 118
+1 Expedited Inheritance (MKM) 123
+1 Warleader's Call (MKM) 242
+1 Hinterland Sanctifier (FDN) 730
