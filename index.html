@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aethergraph — MTG Deck Synergy & Manifold Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html { font-size: 62.5%; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      overscroll-behavior: none;
+      font-size: 1.5rem;
+      background-color: #09090b;
+      color: #e4e4e7;
+    }
+    .font-display {
+      font-family: 'Cinzel', Georgia, serif;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .tooltip {
+      position: absolute;
+      text-align: center;
+      padding: 0.8rem 1rem;
+      font: 1.2rem 'Inter', sans-serif;
+      background: #18181b;
+      border: 1px solid rgba(212, 175, 55, 0.35);
+      border-radius: 0.6rem;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+      color: #f4f4f5;
+      z-index: 10;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.7);
+    }
+    /* Refined neutral zinc scrollbars — no more thick neon cyan bars */
+    .custom-scrollbar::-webkit-scrollbar { width: 0.5rem; height: 0.5rem; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #27272a; border-radius: 9999px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #52525b; }
+    .custom-scrollbar { scrollbar-width: thin; scrollbar-color: #27272a transparent; }
+
+    /* Subtle dot-matrix grid for graph canvas */
+    .canvas-dot-grid {
+      background-color: #09090b;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+  </style>
+  <script type="module" crossorigin src="./assets/index-DiV_QIy8.js"></script>
+</head>
+<body class="bg-[#09090b] text-zinc-200 antialiased selection:bg-amber-500/25 selection:text-amber-200">
+  <div id="root"></div>
+  <div class="tooltip" style="opacity: 0;"></div>
+</body>
+</html>
