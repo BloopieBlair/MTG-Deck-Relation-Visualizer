@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { XMarkIcon, PlusIcon } from './icons';
 
@@ -14,8 +13,7 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({ isOpen, onClose, onC
 
   useEffect(() => {
     if (isOpen) {
-      setCardName(''); // Reset card name on open
-      // Focus the input field when the modal opens
+      setCardName('');
       setTimeout(() => inputRef.current?.focus(), 0); 
     }
   }, [isOpen]);
@@ -56,23 +54,23 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({ isOpen, onClose, onC
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm p-4"
+      className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-md p-4"
       onClick={handleOverlayClick}
       role="dialog"
       aria-modal="true"
       aria-labelledby="add-card-modal-title"
     >
       <div
-        className="bg-gray-800 p-5 md:p-6 rounded-lg shadow-xl w-full max-w-md border border-cyan-600"
-        onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal
+        className="bg-[#0d0d10] p-5 md:p-6 rounded-xl shadow-2xl w-full max-w-md border border-white/[0.1]"
+        onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center mb-4">
-          <h3 id="add-card-modal-title" className="text-lg font-semibold text-cyan-400">
-            Add New Card to Graph
+        <div className="flex justify-between items-center mb-4 pb-3 border-b border-white/[0.06]">
+          <h3 id="add-card-modal-title" className="font-display text-base font-bold text-zinc-100">
+            Add Card to Deck
           </h3>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-cyan-300 transition-colors"
+            className="text-zinc-500 hover:text-zinc-200 transition-colors"
             aria-label="Close add card modal"
           >
             <XMarkIcon className="w-5 h-5" />
@@ -80,8 +78,8 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({ isOpen, onClose, onC
         </div>
 
         <div>
-          <label htmlFor="card-name-input" className="block text-sm font-medium text-gray-300 mb-1.5">
-            Card Name:
+          <label htmlFor="card-name-input" className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">
+            Card Name
           </label>
           <input
             id="card-name-input"
@@ -91,19 +89,19 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({ isOpen, onClose, onC
             onChange={(e) => setCardName(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="e.g., Sol Ring"
-            className="w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+            className="w-full bg-zinc-900 border border-white/[0.08] rounded-md py-2 px-3 text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
             aria-describedby="card-name-help"
           />
-          <p id="card-name-help" className="text-xs text-gray-400 mt-1.5">
-            Enter the full name of the card. The system will try to fetch its data from Scryfall.
+          <p id="card-name-help" className="text-[11px] text-zinc-500 mt-1.5">
+            Enter the exact card name to fetch Oracle text &amp; synergies from Scryfall.
           </p>
         </div>
 
-        <div className="mt-6 flex justify-end space-x-3">
+        <div className="mt-6 flex justify-end space-x-2.5">
           <button
             onClick={onClose}
             type="button"
-            className="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-600 hover:bg-gray-500 rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400"
+            className="px-4 py-2 text-xs font-medium text-zinc-300 bg-zinc-900 hover:bg-zinc-800 border border-white/[0.08] rounded-md transition-colors"
           >
             Cancel
           </button>
@@ -111,9 +109,9 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({ isOpen, onClose, onC
             onClick={handleSubmit}
             type="button"
             disabled={!cardName.trim()}
-            className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-500 rounded-md shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-green-400 flex items-center"
+            className="px-4 py-2 text-xs font-semibold text-amber-200 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center"
           >
-            <PlusIcon className="w-4 h-4 mr-1.5" />
+            <PlusIcon className="w-3.5 h-3.5 mr-1.5 text-amber-400" />
             Add Card
           </button>
         </div>

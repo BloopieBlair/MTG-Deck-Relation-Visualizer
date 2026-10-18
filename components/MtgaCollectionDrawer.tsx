@@ -77,7 +77,7 @@ export const MtgaCollectionDrawer: React.FC<MtgaCollectionDrawerProps> = ({
   }, [commanderCard]);
 
   const colorTabs: { id: ColorTab; label: string; bg: string; text: string; border: string }[] = [
-    { id: 'ALL', label: 'All', bg: 'bg-gray-800', text: 'text-gray-200', border: 'border-gray-700' },
+    { id: 'ALL', label: 'All', bg: 'bg-zinc-800', text: 'text-zinc-200', border: 'border-zinc-700' },
     { id: 'W', label: 'White', bg: 'bg-amber-100/10', text: 'text-amber-200', border: 'border-amber-400/40' },
     { id: 'U', label: 'Blue', bg: 'bg-blue-900/40', text: 'text-blue-300', border: 'border-blue-500/40' },
     { id: 'B', label: 'Black', bg: 'bg-purple-950/50', text: 'text-purple-300', border: 'border-purple-500/40' },
@@ -170,56 +170,56 @@ export const MtgaCollectionDrawer: React.FC<MtgaCollectionDrawerProps> = ({
 
   return (
     <div className={embedded
-      ? "flex-1 flex flex-col min-h-0 bg-gray-950 overflow-hidden text-gray-100 border-t border-gray-800/80"
-      : "fixed inset-y-0 right-0 w-full sm:w-[460px] lg:w-[520px] bg-gray-950 border-l border-cyan-800/60 shadow-2xl z-50 flex flex-col backdrop-blur-xl animate-in slide-in-from-right duration-300"
+      ? "flex-1 flex flex-col min-h-0 bg-zinc-950 overflow-hidden text-zinc-100 border-t border-zinc-800/80"
+      : "fixed inset-y-0 right-0 w-full sm:w-[460px] lg:w-[520px] bg-zinc-950 border-l border-amber-800/60 shadow-2xl z-50 flex flex-col backdrop-blur-xl animate-in slide-in-from-right duration-300"
     }>
       {/* Header */}
       {!embedded ? (
-        <div className="p-4 bg-gray-900/90 border-b border-gray-800 flex items-center justify-between">
+        <div className="p-4 bg-zinc-900/90 border-b border-zinc-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-600 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-600/30">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-600 to-blue-600 flex items-center justify-center shadow-lg shadow-amber-600/30">
               <SparklesIcon className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-gray-100 tracking-tight flex items-center gap-2">
+              <h2 className="text-base font-bold text-zinc-100 tracking-tight flex items-center gap-2">
                 MTG Arena Collection
-                <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-900/80 text-cyan-300 font-mono border border-cyan-700">
+                <span className="text-xs px-2 py-0.5 rounded-full bg-amber-900/80 text-amber-300 font-mono border border-amber-700">
                   {cards.length} Cards
                 </span>
               </h2>
-              <p className="text-xs text-gray-400">Drag any card directly onto the visualizer graph</p>
+              <p className="text-xs text-zinc-400">Drag any card directly onto the visualizer graph</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={onRefresh}
               disabled={isLoading}
-              className="p-2 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-cyan-400 rounded-md border border-gray-700 transition-all active:scale-95 disabled:opacity-50"
+              className="p-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-amber-400 rounded-md border border-zinc-700 transition-all active:scale-95 disabled:opacity-50"
               title="Re-scan MTG Arena Player.log"
             >
-              <ArrowPathIcon className={`w-4 h-4 ${isLoading ? 'animate-spin text-cyan-400' : ''}`} />
+              <ArrowPathIcon className={`w-4 h-4 ${isLoading ? 'animate-spin text-amber-400' : ''}`} />
             </button>
             <button
               onClick={onClose}
-              className="p-2 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white rounded-md border border-gray-700 transition-colors"
+              className="p-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-md border border-zinc-700 transition-colors"
             >
               <XMarkIcon className="w-5 h-5" />
             </button>
           </div>
         </div>
       ) : (
-        <div className="px-3 py-2 bg-gray-900/80 border-b border-gray-800 flex items-center justify-between shrink-0">
+        <div className="px-3 py-2 bg-zinc-900/80 border-b border-zinc-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
-            <SparklesIcon className="w-4 h-4 text-cyan-400" />
-            <span className="text-xs font-bold text-gray-200">Arena Collection</span>
-            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800">
+            <SparklesIcon className="w-4 h-4 text-amber-400" />
+            <span className="text-xs font-bold text-zinc-200">Arena Collection</span>
+            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-amber-950 text-amber-300 border border-amber-800">
               {filteredCards.length} Cards
             </span>
           </div>
           <button
             onClick={onRefresh}
             disabled={isLoading}
-            className="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-cyan-400 hover:text-cyan-300 rounded border border-gray-700 text-[11px] font-semibold flex items-center gap-1.5 transition-all active:scale-95 disabled:opacity-50"
+            className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-amber-400 hover:text-amber-300 rounded border border-zinc-700 text-[11px] font-semibold flex items-center gap-1.5 transition-all active:scale-95 disabled:opacity-50"
             title="Re-scan MTG Arena Player.log"
           >
             <ArrowPathIcon className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
@@ -229,7 +229,7 @@ export const MtgaCollectionDrawer: React.FC<MtgaCollectionDrawerProps> = ({
       )}
 
       {/* Color Filter Tabs */}
-      <div className="px-3 py-2 bg-gray-900/50 border-b border-gray-800/80 flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
+      <div className="px-3 py-2 bg-zinc-900/50 border-b border-zinc-800/80 flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
         {colorTabs.map(tab => {
           const isActive = activeColorTab === tab.id;
           return (
@@ -238,8 +238,8 @@ export const MtgaCollectionDrawer: React.FC<MtgaCollectionDrawerProps> = ({
               onClick={() => setActiveColorTab(tab.id)}
               className={`px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all border ${
                 isActive
-                  ? `${tab.bg} ${tab.text} ${tab.border} ring-1 ring-cyan-500/50 shadow-md`
-                  : 'bg-gray-900/60 text-gray-400 border-gray-800 hover:text-gray-200 hover:bg-gray-800'
+                  ? `${tab.bg} ${tab.text} ${tab.border} ring-1 ring-amber-500/50 shadow-md`
+                  : 'bg-zinc-900/60 text-zinc-400 border-zinc-800 hover:text-zinc-200 hover:bg-zinc-800'
               }`}
             >
               {tab.label}
@@ -249,7 +249,7 @@ export const MtgaCollectionDrawer: React.FC<MtgaCollectionDrawerProps> = ({
       </div>
 
       {/* Search & Sort Controls */}
-      <div className="p-3 bg-gray-900/30 border-b border-gray-800 space-y-2">
+      <div className="p-3 bg-zinc-900/30 border-b border-zinc-800 space-y-2">
         <div className="flex items-center gap-2">
           <div className="relative flex-grow">
             <input
@@ -257,13 +257,13 @@ export const MtgaCollectionDrawer: React.FC<MtgaCollectionDrawerProps> = ({
               placeholder="Search MTGA cards by title, text (+1/+1, counter...), type, set..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-gray-900 border border-gray-800 rounded-md pl-8 pr-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 placeholder-gray-600"
+              className="w-full bg-zinc-900 border border-zinc-800 rounded-md pl-8 pr-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 placeholder-zinc-600"
             />
-            <MagnifyingGlassIcon className="w-4 h-4 text-gray-500 absolute left-2.5 top-2" />
+            <MagnifyingGlassIcon className="w-4 h-4 text-zinc-500 absolute left-2.5 top-2" />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-2 text-gray-500 hover:text-gray-300"
+                className="absolute right-2 top-2 text-zinc-500 hover:text-zinc-300"
               >
                 <XMarkIcon className="w-3.5 h-3.5" />
               </button>
@@ -274,7 +274,7 @@ export const MtgaCollectionDrawer: React.FC<MtgaCollectionDrawerProps> = ({
             className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all border shrink-0 ${
               onlyCommanderLegal
                 ? 'bg-gradient-to-r from-amber-600 to-yellow-600 text-white border-amber-400 shadow-md shadow-amber-900/40 ring-1 ring-amber-400'
-                : 'bg-gray-900 text-gray-400 hover:text-amber-300 border-gray-800 hover:bg-gray-800'
+                : 'bg-zinc-900 text-zinc-400 hover:text-amber-300 border-zinc-800 hover:bg-zinc-800'
             }`}
             title="Filter cards to only those legal in your Commander's Color Identity"
           >
@@ -284,7 +284,7 @@ export const MtgaCollectionDrawer: React.FC<MtgaCollectionDrawerProps> = ({
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as any)}
-            className="bg-gray-900 border border-gray-800 rounded-md px-2.5 py-1.5 text-xs text-gray-300 outline-none focus:border-cyan-500"
+            className="bg-zinc-900 border border-zinc-800 rounded-md px-2.5 py-1.5 text-xs text-zinc-300 outline-none focus:border-amber-500"
           >
             <option value="type_cost">Lands First → Type → Cost</option>
             <option value="cost_type">Mana Cost → Type</option>
@@ -324,11 +324,11 @@ export const MtgaCollectionDrawer: React.FC<MtgaCollectionDrawerProps> = ({
 
         {/* Mana Cost Filter Buttons */}
         <div className="flex items-center gap-1.5 pt-1">
-          <span className="text-[11px] text-gray-500 font-semibold uppercase tracking-wider mr-1">CMC:</span>
+          <span className="text-[11px] text-zinc-500 font-semibold uppercase tracking-wider mr-1">CMC:</span>
           <button
             onClick={() => setSelectedCmc(null)}
             className={`px-2 py-0.5 rounded text-xs font-mono ${
-              selectedCmc === null ? 'bg-cyan-600 text-white font-bold' : 'bg-gray-900 text-gray-400 hover:text-gray-200'
+              selectedCmc === null ? 'bg-amber-600 text-white font-bold' : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200'
             }`}
           >
             All
@@ -339,8 +339,8 @@ export const MtgaCollectionDrawer: React.FC<MtgaCollectionDrawerProps> = ({
               onClick={() => setSelectedCmc(selectedCmc === cmc ? null : cmc)}
               className={`px-2 py-0.5 rounded text-xs font-mono transition-all ${
                 selectedCmc === cmc
-                  ? 'bg-cyan-600 text-white font-bold ring-1 ring-cyan-400'
-                  : 'bg-gray-900 text-gray-400 hover:text-gray-200 hover:bg-gray-800'
+                  ? 'bg-amber-600 text-white font-bold ring-1 ring-amber-400'
+                  : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
               }`}
             >
               {cmc === 7 ? '7+' : cmc}
@@ -352,24 +352,24 @@ export const MtgaCollectionDrawer: React.FC<MtgaCollectionDrawerProps> = ({
       {/* Card List Area */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-4">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center h-64 text-gray-400 space-y-3">
-            <ArrowPathIcon className="w-8 h-8 text-cyan-400 animate-spin" />
-            <p className="text-xs font-mono text-cyan-400">Scanning MTG Arena Player.log & SQLite DB...</p>
+          <div className="flex flex-col items-center justify-center h-64 text-zinc-400 space-y-3">
+            <ArrowPathIcon className="w-8 h-8 text-amber-400 animate-spin" />
+            <p className="text-xs font-mono text-amber-400">Scanning MTG Arena Player.log & SQLite DB...</p>
           </div>
         ) : error ? (
           <div className="p-4 bg-red-950/40 border border-red-800/60 rounded-lg text-xs text-red-300 space-y-2">
             <p className="font-bold text-red-200">Could not load MTG Arena logs:</p>
             <p className="font-mono text-[11px] text-red-400">{error}</p>
-            <p className="text-gray-400 pt-1">
+            <p className="text-zinc-400 pt-1">
               Ensure MTG Arena plugin logging is enabled: <strong>Settings &gt; Account &gt; Detailed Logs (Plugin Support)</strong>.
             </p>
           </div>
         ) : filteredCards.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-gray-500 space-y-2">
+          <div className="flex flex-col items-center justify-center h-48 text-zinc-500 space-y-2">
             <p className="text-sm font-semibold">No MTGA cards match current filters</p>
             <button
               onClick={() => { setActiveColorTab('ALL'); setSelectedCmc(null); setSearchQuery(''); }}
-              className="text-xs text-cyan-400 hover:underline"
+              className="text-xs text-amber-400 hover:underline"
             >
               Clear filters
             </button>
@@ -379,12 +379,12 @@ export const MtgaCollectionDrawer: React.FC<MtgaCollectionDrawerProps> = ({
             {groupedCards.map(group => (
               <div key={group.category} className="space-y-2">
                 {sortBy === 'type_cost' && (
-                  <div className="sticky top-0 z-10 bg-gray-950/90 backdrop-blur-md py-1 px-2 border-b border-gray-800 flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-cyan-400 uppercase tracking-widest flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                  <div className="sticky top-0 z-10 bg-zinc-950/90 backdrop-blur-md py-1 px-2 border-b border-zinc-800 flex items-center justify-between">
+                    <h3 className="text-xs font-bold text-amber-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
                       {group.category}s
                     </h3>
-                    <span className="text-[10px] font-mono text-gray-500">{group.items.length}</span>
+                    <span className="text-[10px] font-mono text-zinc-500">{group.items.length}</span>
                   </div>
                 )}
 
@@ -408,20 +408,20 @@ export const MtgaCollectionDrawer: React.FC<MtgaCollectionDrawerProps> = ({
                           if (onCardHover) onCardHover(null);
                         }}
 
-                        className="group flex items-center justify-between p-2 rounded-lg bg-gray-900/80 hover:bg-gray-800 border border-gray-800/80 hover:border-cyan-500/50 transition-all cursor-grab active:cursor-grabbing shadow-sm hover:shadow-cyan-900/20"
+                        className="group flex items-center justify-between p-2 rounded-lg bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800/80 hover:border-amber-500/50 transition-all cursor-grab active:cursor-grabbing shadow-sm hover:shadow-amber-900/20"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
                           {/* Set Code Badge */}
-                          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-gray-800 text-cyan-300 border border-gray-700 uppercase shrink-0">
+                          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-zinc-800 text-amber-300 border border-zinc-700 uppercase shrink-0">
                             {card.setCode || 'MTGA'}
                           </span>
 
                           {/* Card Title & Type */}
                           <div className="min-w-0">
-                            <div className="text-xs font-semibold text-gray-200 group-hover:text-cyan-300 transition-colors truncate flex items-center gap-1.5">
+                            <div className="text-xs font-semibold text-zinc-200 group-hover:text-amber-300 transition-colors truncate flex items-center gap-1.5">
                               <span className="truncate">{card.title}</span>
                             </div>
-                            <div className="text-[10px] text-gray-500 truncate flex items-center gap-2">
+                            <div className="text-[10px] text-zinc-500 truncate flex items-center gap-2">
                               <span>{card.typeText}</span>
                               {card.power && card.toughness && (
                                 <span className="font-mono text-amber-300/80">[{card.power}/{card.toughness}]</span>
@@ -441,18 +441,18 @@ export const MtgaCollectionDrawer: React.FC<MtgaCollectionDrawerProps> = ({
                             </span>
                           )}
                           {card.primaryType !== 'Land' && (
-                            <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800/60">
+                            <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-800/60">
                               {card.cmc} CMC
                             </span>
                           )}
                           {card.quantity > 1 && (
-                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 border border-gray-700">
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
                               x{card.quantity}
                             </span>
                           )}
                           <button
                             onClick={() => onAddCardToDeck(card)}
-                            className="p-1.5 bg-cyan-600/20 hover:bg-cyan-600 text-cyan-400 hover:text-white rounded transition-all active:scale-95 border border-cyan-500/40"
+                            className="p-1.5 bg-amber-600/20 hover:bg-amber-600 text-amber-400 hover:text-white rounded transition-all active:scale-95 border border-amber-500/40"
                             title={`Add "${card.title}" to visualizer`}
                           >
                             <PlusIcon className="w-3.5 h-3.5" />
@@ -469,7 +469,7 @@ export const MtgaCollectionDrawer: React.FC<MtgaCollectionDrawerProps> = ({
               <div className="pt-2 pb-4 text-center">
                 <button
                   onClick={() => setDisplayLimit(prev => prev + 100)}
-                  className="w-full py-2.5 bg-gradient-to-r from-cyan-900/80 to-blue-900/80 hover:from-cyan-800 hover:to-blue-800 text-cyan-300 hover:text-white rounded-lg border border-cyan-700/60 text-xs font-bold shadow-lg transition-all active:scale-95"
+                  className="w-full py-2.5 bg-gradient-to-r from-amber-900/50 to-amber-950/60 hover:from-amber-800/60 hover:to-amber-900/60 text-amber-300 hover:text-white rounded-lg border border-amber-700/60 text-xs font-bold shadow-lg transition-all active:scale-95"
                 >
                   Load More Cards ({filteredCards.length - displayLimit} remaining)
                 </button>

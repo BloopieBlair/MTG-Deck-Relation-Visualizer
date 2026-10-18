@@ -141,6 +141,38 @@ export const normalizeCardName = (name: string | undefined): string => {
     .trim();
 };
 
+// In-memory runtime cache
+const memoryCardCache: Record<string, CardGameData> = {};
+
+function getCachedCard(name: string): CardGameData | null {
+  const norm = normalizeCardName(name);
+  if (!norm) return null;
+  if (memoryCardCache[norm]) return memoryCardCache[norm];
+  
+  try {
+    const serialized = localStorage.getItem(`scryfall_cache_${norm}`);
+    if (serialized) {
+      const parsed = JSON.parse(serialized) as CardGameData;
+      memoryCardCache[norm] = parsed;
+      return parsed;
+    }
+  } catch (e) {
+    // Ignore storage quota/access errors
+  }
+  return null;
+}
+
+function setCachedCard(name: string, data: CardGameData): void {
+  const norm = normalizeCardName(name);
+  if (!norm || !data) return;
+  memoryCardCache[norm] = data;
+  try {
+    localStorage.setItem(`scryfall_cache_${norm}`, JSON.stringify(data));
+  } catch (e) {
+    // Storage might be full, fallback to memory
+  }
+}
+
 export async function fetchCardsBatch(
   cardNames: string[],
   onProgressUpdate?: (message: string) => void
@@ -148,11 +180,25 @@ export async function fetchCardsBatch(
   const results: Record<string, CardGameData> = {};
   if (cardNames.length === 0) return results;
 
+  const neededNames: string[] = [];
+  cardNames.forEach(name => {
+    const cached = getCachedCard(name);
+    if (cached) {
+      results[normalizeCardName(name)] = cached;
+    } else {
+      neededNames.push(name);
+    }
+  });
+
+  if (neededNames.length === 0) {
+    return results;
+  }
+
   // Scryfall's collection endpoint accepts up to 75 identifiers per request
   const BATCH_SIZE = 75;
   const chunks: string[][] = [];
-  for (let i = 0; i < cardNames.length; i += BATCH_SIZE) {
-    chunks.push(cardNames.slice(i, i + BATCH_SIZE));
+  for (let i = 0; i < neededNames.length; i += BATCH_SIZE) {
+    chunks.push(neededNames.slice(i, i + BATCH_SIZE));
   }
 
   for (const chunk of chunks) {
@@ -176,11 +222,12 @@ export async function fetchCardsBatch(
       const notFound: any[] = data.not_found || [];
 
       cardList.forEach(card => {
-        results[normalizeCardName(card.name)] = processScryfallData(card);
+        const processed = processScryfallData(card);
+        const norm = normalizeCardName(card.name);
+        results[norm] = processed;
+        setCachedCard(card.name, processed);
       });
 
-      // For cards not found in batch, we might want to try fuzzy search individually later
-      // or just log them.
       if (notFound.length > 0) {
         console.warn(`Scryfall batch: ${notFound.length} cards not found.`, notFound);
       }
@@ -205,18 +252,21 @@ export async function fetchCardDataFromScryfall(
     return null;
   }
 
+  const cached = getCachedCard(cardName);
+  if (cached) {
+    return cached;
+  }
+
   await delay(SCRYFALL_REQUEST_DELAY_MS);
 
   const encodedCardName = encodeURIComponent(cardName);
   const url = `${SCRYFALL_API_BASE_URL}/cards/named?exact=${encodedCardName}`;
-  // console.log(`[ScryfallService] Fetching (exact): ${cardName} from ${url}`); // Original log
 
   try {
     const response = await fetch(url);
 
     if (!response.ok) {
       if (response.status === 404) {
-        // console.log(`[ScryfallService] Exact match failed for "${cardName}". Fetching (fuzzy)...`); // Original log
         const fuzzyUrl = `${SCRYFALL_API_BASE_URL}/cards/named?fuzzy=${encodedCardName}`;
         const fuzzyResponse = await fetch(fuzzyUrl);
         if (!fuzzyResponse.ok) {
@@ -235,7 +285,10 @@ export async function fetchCardDataFromScryfall(
         console.log(successFuzzyMsg);
         if (onProgressUpdate) onProgressUpdate(successFuzzyMsg);
         const fuzzyData: ScryfallCard = await fuzzyResponse.json();
-        return processScryfallData(fuzzyData);
+        const processed = processScryfallData(fuzzyData);
+        setCachedCard(cardName, processed);
+        if (fuzzyData.name) setCachedCard(fuzzyData.name, processed);
+        return processed;
       } else {
         const errorExactMsg = `[ScryfallService] Error fetching (exact): ${cardName}. Status: ${response.status}`;
         console.error(errorExactMsg, await response.text());
@@ -247,7 +300,10 @@ export async function fetchCardDataFromScryfall(
     console.log(successExactMsg);
     if (onProgressUpdate) onProgressUpdate(successExactMsg);
     const data: ScryfallCard = await response.json();
-    return processScryfallData(data);
+    const processed = processScryfallData(data);
+    setCachedCard(cardName, processed);
+    if (data.name) setCachedCard(data.name, processed);
+    return processed;
 
   } catch (error) {
     const networkErrorMsg = `[ScryfallService] Network/parsing error for: ${cardName}`;

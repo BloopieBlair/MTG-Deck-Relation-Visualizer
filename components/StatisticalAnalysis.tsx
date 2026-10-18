@@ -1,5 +1,3 @@
-
-
 import React, { useMemo } from 'react';
 import type { ProcessedDeckCard } from '../types';
 
@@ -96,33 +94,38 @@ export const StatisticalAnalysis: React.FC<StatisticalAnalysisProps> = ({ deck }
     }
 
     return (
-        <div className="mt-4 bg-gray-700/50 p-4 rounded-lg">
-            <h4 className="text-lg font-semibold text-cyan-400 mb-3">
-                Opening Hand Draw Analysis (7 Cards)
-            </h4>
+        <div className="bg-[#0d0d10] p-5 rounded-xl border border-white/[0.06] shadow-lg">
+            <div className="flex items-center justify-between mb-4 pb-2.5 border-b border-white/[0.06]">
+                <h4 className="font-display text-sm font-bold text-amber-300 tracking-wide">
+                    Opening Hand Draw Analysis (7 Cards)
+                </h4>
+                <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
+                    Hypergeometric P(X ≥ 1)
+                </span>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
                 {analysisResults.map(stat => (
-                    <div key={stat.type}>
-                        <div className="flex justify-between items-baseline mb-1 text-base">
-                            <span className="font-medium text-gray-200">
-                                {stat.type} <span className="text-sm text-gray-400">({stat.count} in deck)</span>
+                    <div key={stat.type} className="p-2.5 rounded-lg bg-zinc-900/40 border border-white/[0.04]">
+                        <div className="flex justify-between items-baseline mb-1.5">
+                            <span className="text-xs font-medium text-zinc-200">
+                                {stat.type} <span className="text-[11px] font-mono text-zinc-500">({stat.count})</span>
                             </span>
-                            <span className="font-semibold text-cyan-300">
+                            <span className="text-xs font-mono font-semibold text-amber-300">
                                 {(stat.probability * 100).toFixed(1)}%
                             </span>
                         </div>
-                        <div className="w-full bg-gray-600 rounded-full h-3 overflow-hidden" title={`Chance to draw at least one: ${(stat.probability * 100).toFixed(1)}%`}>
+                        <div className="w-full bg-zinc-950 border border-white/[0.05] rounded-full h-2 overflow-hidden" title={`Chance to draw at least one: ${(stat.probability * 100).toFixed(1)}%`}>
                             <div 
-                                className="bg-cyan-500 h-3 rounded-full transition-all duration-500 ease-out" 
+                                className="bg-gradient-to-r from-amber-600 via-amber-500 to-amber-300 h-full rounded-full transition-all duration-500 ease-out" 
                                 style={{ width: `${stat.probability * 100}%` }}
                             ></div>
                         </div>
                     </div>
                 ))}
             </div>
-             <p className="text-sm text-gray-400 mt-4 pt-2 border-t border-cyan-700/20">
-                This shows the hypergeometric probability of drawing at least one card of the specified type in your opening hand of 7 cards.
-             </p>
+            <p className="text-[11px] text-zinc-500 mt-4 pt-3 border-t border-white/[0.05]">
+                Exact hypergeometric probability of drawing at least one card of each primary type in an opening 7-card hand.
+            </p>
         </div>
     );
 };

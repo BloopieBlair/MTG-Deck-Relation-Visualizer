@@ -107,3 +107,135 @@ export const DECKLIST_LINK_HIGHLIGHT_OPACITY = 1;
 
 // Placeholder for sample hand images (152x212)
 export const HAND_PLACEHOLDER_IMAGE_URL = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="152" height="212" viewBox="0 0 152 212" fill="%23111827"><rect width="152" height="212" rx="10" fill="%23111827" stroke="%23374151" stroke-width="4"/><text x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%239CA3AF" font-family="sans-serif" font-size="14" font-weight="bold">No Image</text></svg>`;
+
+export const SAMPLE_DECK_ANIM_PAKAL = `Commander
+1 Anim Pakal, Thousandth Moon (LCI) 223
+
+Deck
+1 Warden of the Inner Sky (LCI) 43
+14 Plains (LTR) 263
+13 Mountain (LTR) 269
+1 Lunarch Veteran (MID) 27
+1 Altar of the Brood (KTK) 216
+1 Soul Warden (M10) 34
+1 Anointer Priest (AKR) 3
+1 Blind Obedience (WOT) 1
+1 Land Tax (WOT) 9
+1 Mana Tithe (STA) 8
+1 Panharmonicon (KLR) 258
+1 Terramorphic Expanse (ONE) 261
+1 Homestead Courage (MID) 24
+1 Light of Hope (IKO) 20
+1 Ajani's Pridemate (WAR) 4
+1 Feat of Resistance (M21) 19
+1 Hallowed Priest (ANB) 9
+1 Dawn of a New Age (LTR) 5
+1 Abzan Falconer (J21) 2
+1 Rosie Cotton of South Lane (LTR) 27
+1 Light of Promise (M21) 25
+1 Aurelia, the Law Above (MKM) 188
+1 Mondrak, Glory Dominus (ONE) 23
+1 Serra Redeemer (DMU) 282
+1 Angelic Gift (M20) 5
+1 Bloodlust Inciter (AKR) 140
+1 Diamond Pick-Axe (LCI) 143
+1 Rabbit Battery (NEO) 157
+1 Cleric Class (AFR) 6
+1 Ragavan, Nimble Pilferer (MUL) 86
+1 Shock (ANB) 84
+1 Strike It Rich (MH2) 143
+1 Petrify (LCI) 30
+1 Benalish Knight-Counselor (Y23) 1
+1 Recommission (BRO) 22
+1 Smothering Tithe (WOT) 13
+1 Sticky Fingers (SNC) 124
+1 Demand Answers (MKM) 122
+1 Veil of Assimilation (ONE) 37
+1 Quarrel's End (LTR) 141
+1 Elesh Norn, Mother of Machines (ONE) 10
+1 Aurelia, the Warleader (FDN) 651
+1 Kumano Faces Kakkazan (NEO) 152
+1 Hopeful Initiate (VOW) 20
+1 Luminarch Aspirant (ZNR) 24
+1 Anointed Procession (AKR) 2
+1 Captivating Cave (LCI) 268
+1 Mandible Justiciar (ONE) 21
+1 Agatha's Soul Cauldron (WOE) 242
+1 Mox Amber (BRR) 35
+1 Reinforced Ronin (NEO) 158
+1 Impact Tremors (WOT) 44
+1 Boundary Lands Ranger (WOE) 123
+1 Ajani's Welcome (M19) 6
+1 Brave the Elements (M14) 10
+1 Impassioned Orator (ANB) 10
+1 Kor Celebrant (ZNR) 22
+1 Reckless Fireweaver (KLR) 141
+1 Intangible Virtue (WOT) 6
+1 Harmonious Archon (ELD) 17
+1 Sundown Pass (VOW) 266
+1 Battlefield Forge (BRO) 257
+1 Command Tower (ANB) 118
+1 Karn's Bastion (WAR) 248
+1 Swallow Whole (IKO) 35
+1 Great Hall of the Citadel (LTR) 254
+1 Ornithopter (BRR) 37
+1 Case of the Gateway Express (MKM) 8
+1 Not on My Watch (MKM) 28
+1 Crusader of Odric (FDN) 569
+1 Connecting the Dots (MKM) 118
+1 Expedited Inheritance (MKM) 123
+1 Warleader's Call (MKM) 242
+1 Hinterland Sanctifier (FDN) 730`;
+
+export const SAMPLE_DECK_SLIVERS = `Commander
+1 Sliver Overlord (SPG) 0
+
+Deck
+4 Plains (ECL) 269
+4 Island (ECL) 270
+4 Swamp (ECL) 271
+4 Mountain (ECL) 272
+5 Forest (ECL) 273
+1 Enduring Sliver (MH1) 6
+1 Diffusion Sliver (J21) 33
+1 Dregscape Sliver (MH1) 88
+1 Leeching Sliver (J21) 57
+1 Striking Sliver (J21) 88
+1 Bladeback Sliver (MH1) 119
+1 Belligerent Sliver (J21) 67
+1 Manaweft Sliver (J21) 102
+1 Predatory Sliver (J21) 104
+1 Cleaving Sliver (MH1) 121
+1 Tempered Sliver (MH1) 183
+1 Blur Sliver (J21) 69
+1 First Sliver's Chosen (MH1) 9
+1 Steelform Sliver (J21) 25
+1 Sentinel Sliver (J21) 23
+1 Lancer Sliver (MH1) 18
+1 Hollowhead Sliver (MH1) 132
+1 Scuttling Sliver (MH1) 68
+1 Lavabelly Sliver (MH1) 207
+1 Bonescythe Sliver (J21) 9
+1 Spiteful Sliver (MH1) 148
+1 Sliver Hivelord (M15) 211
+1 Cloudshredder Sliver (MH1) 195
+1 Hive Stirrings (J21) 15
+1 Crib Swap (ECL) 11
+1 Changeling Outcast (MH1) 82
+1 Esper Sentinel (MH2) 12
+1 Ponder (OMB) 13
+1 Land Tax (WOT) 9
+1 Gamble (TLE) 312
+1 Brave the Wilds (WOE) 165
+1 Sylvan Tutor (SPG) 59
+1 Worldly Tutor (TLE) 314
+1 Traveler's Amulet (SIS) 73
+1 Rakdos Signet (RVR) 265
+1 Arcane Signet (ANB) 117
+1 Dimir Signet (RVR) 256
+1 Assassin's Trophy (MKM) 187
+1 Mana Tithe (STA) 8
+1 Swallow Whole (IKO) 35
+1 Miscast (M21) 57
+1 Dark Ritual (STA) 26
+1 Command Tower (ANB) 118`;

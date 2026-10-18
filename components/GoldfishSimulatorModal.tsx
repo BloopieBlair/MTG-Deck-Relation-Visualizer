@@ -228,24 +228,24 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
-      <div className="flex flex-col w-full max-w-[96vw] xl:max-w-[1550px] h-[92vh] bg-gray-950/95 border border-cyan-800/60 rounded-xl overflow-hidden shadow-[0_0_30px_rgba(6,182,212,0.2)]">
+      <div className="flex flex-col w-full max-w-[96vw] xl:max-w-[1550px] h-[92vh] bg-zinc-950/95 border border-amber-800/60 rounded-xl overflow-hidden shadow-[0_0_30px_rgba(212,175,55,0.2)]">
         
         {/* Header */}
-        <header className="flex items-center justify-between p-5 bg-gray-900 border-b border-cyan-800/40">
+        <header className="flex items-center justify-between p-5 bg-zinc-900 border-b border-amber-800/40">
           <div className="flex items-center gap-3">
-            <SparklesIcon className="w-5.5 h-5.5 text-cyan-400 animate-pulse" />
+            <SparklesIcon className="w-5.5 h-5.5 text-amber-400 animate-pulse" />
             <div>
               <h2 className="text-xl font-bold tracking-tight text-white">
                 MTG Goldfish Simulator
               </h2>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-zinc-400">
                 Determine deck velocity and optimal commander playlines
               </p>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="p-1.5 text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-md transition-colors"
+            className="p-1.5 text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded-md transition-colors"
           >
             <XMarkIcon className="w-5 h-5" />
           </button>
@@ -256,7 +256,7 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center overflow-y-auto">
             <CrownIcon className="w-16 h-16 text-amber-500 mb-4 animate-bounce" />
             <h3 className="text-xl font-bold text-white mb-2">No Commander Set</h3>
-            <p className="text-sm text-gray-400 max-w-md mb-6">
+            <p className="text-sm text-zinc-400 max-w-md mb-6">
               To calculate goldfish statistics, we need a Commander to target. Please select a legendary creature from your decklist:
             </p>
             
@@ -270,16 +270,16 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                   <button
                     key={c.id}
                     onClick={() => onSetCommander(c)}
-                    className="flex flex-col items-center p-3 bg-gray-900 hover:bg-gray-850 border border-gray-800 hover:border-amber-500/50 rounded-lg text-left transition-all hover:scale-105"
+                    className="flex flex-col items-center p-3 bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-amber-500/50 rounded-lg text-left transition-all hover:scale-105"
                   >
                     {c.imageUrl ? (
                       <img src={c.imageUrl} className="w-20 h-28 object-contain rounded-md shadow-md mb-2" alt={c.name} />
                     ) : (
-                      <div className="w-20 h-28 bg-gray-800 rounded-md flex items-center justify-center text-xs text-gray-500 mb-2 border border-gray-700">
+                      <div className="w-20 h-28 bg-zinc-800 rounded-md flex items-center justify-center text-xs text-zinc-500 mb-2 border border-zinc-700">
                         No Image
                       </div>
                     )}
-                    <span className="text-xs font-semibold text-gray-200 text-center line-clamp-1 w-full">{c.name}</span>
+                    <span className="text-xs font-semibold text-zinc-200 text-center line-clamp-1 w-full">{c.name}</span>
                   </button>
                 ))}
               </div>
@@ -289,14 +289,14 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
           /* Main Dashboard */
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Controls / Tabs */}
-            <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 bg-gray-900/60 border-b border-gray-800/40">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 bg-zinc-900/60 border-b border-zinc-800/40">
               <div className="flex gap-2">
                 <button
                   onClick={() => setActiveTab('stats')}
                   className={`px-5 py-2 rounded-md text-[15px] font-bold uppercase tracking-wider transition-all ${
                     activeTab === 'stats' 
-                      ? 'bg-cyan-600 text-white shadow-[0_0_10px_rgba(6,182,212,0.3)]' 
-                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+                      ? 'bg-amber-600 text-white shadow-[0_0_10px_rgba(212,175,55,0.3)]' 
+                      : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
                   }`}
                 >
                   Monte Carlo Stats
@@ -305,8 +305,8 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                   onClick={() => setActiveTab('explorer')}
                   className={`px-5 py-2 rounded-md text-[15px] font-bold uppercase tracking-wider transition-all ${
                     activeTab === 'explorer' 
-                      ? 'bg-cyan-600 text-white shadow-[0_0_10px_rgba(6,182,212,0.3)]' 
-                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+                      ? 'bg-amber-600 text-white shadow-[0_0_10px_rgba(212,175,55,0.3)]' 
+                      : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
                   }`}
                 >
                   Gameplay Explorer
@@ -315,8 +315,8 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                   onClick={() => setActiveTab('decision-trace')}
                   className={`px-5 py-2 rounded-md text-[15px] font-bold uppercase tracking-wider transition-all ${
                     activeTab === 'decision-trace' 
-                      ? 'bg-cyan-600 text-white shadow-[0_0_10px_rgba(6,182,212,0.3)]' 
-                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+                      ? 'bg-amber-600 text-white shadow-[0_0_10px_rgba(212,175,55,0.3)]' 
+                      : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
                   }`}
                 >
                   Decision Trace
@@ -325,15 +325,15 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
 
               {/* Status Indicator */}
               <div className="flex items-center gap-4 text-sm">
-                <div className="flex items-center gap-2 px-3 py-1 bg-gray-900 border border-gray-800 rounded-md">
-                  <span className="text-gray-400">Commander:</span>
+                <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-zinc-800 rounded-md">
+                  <span className="text-zinc-400">Commander:</span>
                   <span className="font-semibold text-amber-400 flex items-center gap-1">
                     <CrownIcon className="w-3.5 h-3.5" /> {commanderCard.name}
                   </span>
                 </div>
                 {isSimulating && (
-                  <div className="flex items-center gap-1.5 text-cyan-400 font-semibold animate-pulse">
-                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+                  <div className="flex items-center gap-1.5 text-amber-400 font-semibold animate-pulse">
+                    <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
                     Calculating...
                   </div>
                 )}
@@ -344,8 +344,8 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
             <div className="flex-1 min-h-0 relative">
               {isSimulating && (
                 <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-20">
-                  <div className="w-10 h-10 border-4 border-cyan-600 border-t-transparent rounded-full animate-spin mb-3" />
-                  <p className="text-sm font-mono text-cyan-400 animate-pulse tracking-widest uppercase">Executing Timelines...</p>
+                  <div className="w-10 h-10 border-4 border-amber-600 border-t-transparent rounded-full animate-spin mb-3" />
+                  <p className="text-sm font-mono text-amber-400 animate-pulse tracking-widest uppercase">Executing Timelines...</p>
                 </div>
               )}
 
@@ -354,29 +354,29 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                 <div className="h-full overflow-y-auto p-6 space-y-6 custom-scrollbar">
                   {/* Summary Cards */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="p-4 bg-gray-900/40 border border-gray-800/80 rounded-xl flex flex-col items-center text-center shadow-lg">
-                      <span className="text-[13px] font-bold text-gray-400 uppercase tracking-wider mb-1">Avg Casting Turn</span>
-                      <span className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 drop-shadow-[0_0_15px_rgba(6,182,212,0.3)]">
+                    <div className="p-4 bg-zinc-900/40 border border-zinc-800/80 rounded-xl flex flex-col items-center text-center shadow-lg">
+                      <span className="text-[13px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Avg Casting Turn</span>
+                      <span className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-amber-500 drop-shadow-[0_0_15px_rgba(212,175,55,0.3)]">
                         {mcResult.averageTurn > 7 ? '7.0+' : mcResult.averageTurn.toFixed(2)}
                       </span>
-                      <span className="text-[12px] text-gray-300 mt-2">Optimal cast turn across {mcResult.totalRuns} runs</span>
+                      <span className="text-[12px] text-zinc-300 mt-2">Optimal cast turn across {mcResult.totalRuns} runs</span>
                     </div>
 
-                    <div className="p-4 bg-gray-900/40 border border-gray-800/80 rounded-xl flex flex-col items-center text-center shadow-lg">
-                      <span className="text-[13px] font-bold text-gray-400 uppercase tracking-wider mb-1">Casting Success Rate</span>
+                    <div className="p-4 bg-zinc-900/40 border border-zinc-800/80 rounded-xl flex flex-col items-center text-center shadow-lg">
+                      <span className="text-[13px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Casting Success Rate</span>
                       <span className="text-4xl font-extrabold text-green-400 drop-shadow-[0_0_15px_rgba(34,197,94,0.3)]">
                         {(mcResult.successRate * 100).toFixed(1)}%
                       </span>
-                      <span className="text-[12px] text-gray-300 mt-2">Castable by Turn 7 or earlier</span>
+                      <span className="text-[12px] text-zinc-300 mt-2">Castable by Turn 7 or earlier</span>
                     </div>
 
-                    <div className="p-4 bg-gray-900/40 border border-gray-800/80 rounded-xl flex flex-col items-center justify-between shadow-lg">
+                    <div className="p-4 bg-zinc-900/40 border border-zinc-800/80 rounded-xl flex flex-col items-center justify-between shadow-lg">
                       <div className="flex flex-col items-center w-full">
-                        <span className="text-[13px] font-bold text-gray-400 uppercase tracking-wider mb-2">Sim Runs</span>
+                        <span className="text-[13px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Sim Runs</span>
                         <select
                           value={mcRuns}
                           onChange={(e) => setMcRuns(Number(e.target.value))}
-                          className="bg-gray-950 border border-gray-850 hover:border-cyan-500/50 rounded px-2 py-1 text-[13px] outline-none text-gray-250 w-full text-center"
+                          className="bg-zinc-950 border border-zinc-850 hover:border-amber-500/50 rounded px-2 py-1 text-[13px] outline-none text-zinc-250 w-full text-center"
                         >
                           <option value={100}>100 Runs (Fast)</option>
                           <option value={300}>300 Runs (Standard)</option>
@@ -385,7 +385,7 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                       </div>
                       <button
                         onClick={handleReRunMC}
-                        className="w-full mt-2 py-1.5 bg-cyan-600 hover:bg-cyan-500 rounded text-[13px] font-bold transition-all text-white active:scale-95 shadow-md shadow-cyan-650/20"
+                        className="w-full mt-2 py-1.5 bg-amber-600 hover:bg-amber-500 rounded text-[13px] font-bold transition-all text-white active:scale-95 shadow-md shadow-amber-650/20"
                       >
                         Re-run Stats
                       </button>
@@ -393,8 +393,8 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                   </div>
 
                   {/* Distribution Chart */}
-                  <div className="p-5 bg-gray-900/20 border border-gray-800/40 rounded-xl">
-                    <h3 className="text-[16px] font-extrabold text-cyan-400 mb-4 uppercase tracking-wider">Turn Cast Distribution</h3>
+                  <div className="p-5 bg-zinc-900/20 border border-zinc-800/40 rounded-xl">
+                    <h3 className="text-[16px] font-extrabold text-amber-400 mb-4 uppercase tracking-wider">Turn Cast Distribution</h3>
                     <div className="space-y-3.5">
                       {(() => {
                         const list: { turn: number; percent: number; count: number }[] = [];
@@ -430,16 +430,16 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                           const isFail = turn > 7;
                           return (
                             <div key={turn} className="flex items-center gap-4">
-                              <span className="w-16 text-right text-[14px] font-bold text-gray-250">
+                              <span className="w-16 text-right text-[14px] font-bold text-zinc-250">
                                 {isFail ? 'Turn 8+' : `Turn ${turn}`}
                               </span>
-                              <div className="flex-1 bg-gray-900 rounded-full h-4 overflow-hidden border border-gray-850">
+                              <div className="flex-1 bg-zinc-900 rounded-full h-4 overflow-hidden border border-zinc-850">
                                 <div
                                   style={{ width: `${percent}%` }}
                                   className={`h-full rounded-full transition-all duration-700 ease-out relative ${
                                     isFail 
                                       ? 'bg-gradient-to-r from-red-600 to-red-500 shadow-[0_0_5px_rgba(239,68,68,0.4)]'
-                                      : 'bg-gradient-to-r from-cyan-500 to-blue-600 shadow-[0_0_5px_rgba(6,182,212,0.4)]'
+                                      : 'bg-gradient-to-r from-amber-500 to-amber-600 shadow-[0_0_5px_rgba(212,175,55,0.4)]'
                                   }`}
                                 >
                                   {percent > 5 && (
@@ -450,7 +450,7 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                                 </div>
                               </div>
                               {percent <= 5 && (
-                                <span className="w-10 text-left text-[11px] font-bold text-gray-350">
+                                <span className="w-10 text-left text-[11px] font-bold text-zinc-350">
                                   {percent.toFixed(1)}%
                                 </span>
                               )}
@@ -462,8 +462,8 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                   </div>
 
                   {/* Simulator Overview */}
-                  <div className="p-4.5 bg-cyan-950/15 border border-cyan-850/20 rounded-xl text-[14px] text-gray-300 space-y-2.5">
-                    <h4 className="font-bold text-[15px] text-cyan-400">Deterministic Rules & Pathfinding Model</h4>
+                  <div className="p-4.5 bg-amber-950/15 border border-amber-850/20 rounded-xl text-[14px] text-zinc-300 space-y-2.5">
+                    <h4 className="font-bold text-[15px] text-amber-400">Deterministic Rules & Pathfinding Model</h4>
                     <p>
                       The Monte Carlo loop shuffles the remaining 99 cards in the library, draws a starting 7, and uses a breadth-first search pathfinder. It evaluates all valid sequences of playing lands, tapping mana sources (via the <strong>Dumb Autotapper</strong> choice engine), and casting mana rocks, mana dorks, land-auras, and land-ramp spells.
                     </p>
@@ -479,13 +479,13 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                 <div className="h-full flex flex-col md:flex-row overflow-hidden">
                   
                   {/* Left Column: Opening Hand and Optimal Play steps */}
-                  <div className="w-full md:w-2/5 p-4 border-b md:border-b-0 md:border-r border-gray-800/40 flex flex-col h-1/2 md:h-full overflow-y-auto custom-scrollbar">
+                  <div className="w-full md:w-2/5 p-4 border-b md:border-b-0 md:border-r border-zinc-800/40 flex flex-col h-1/2 md:h-full overflow-y-auto custom-scrollbar">
                     
                     <div className="flex justify-between items-center mb-3">
-                      <h3 className="text-[16px] font-extrabold text-cyan-400 uppercase tracking-wider">Opening Hand (7 Cards)</h3>
+                      <h3 className="text-[16px] font-extrabold text-amber-400 uppercase tracking-wider">Opening Hand (7 Cards)</h3>
                       <button
                         onClick={handleShuffleLibrary}
-                        className="px-3 py-1.5 bg-gray-800 hover:bg-gray-750 border border-gray-700 rounded text-[13px] font-bold transition-all text-gray-200"
+                        className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 rounded text-[13px] font-bold transition-all text-zinc-200"
                         title="Re-shuffle library and re-run pathfinder on the same opening hand"
                       >
                         🔄 Re-shuffle Library
@@ -498,13 +498,13 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                         <div 
                           key={idx}
                           onClick={() => onCardClick(card)}
-                          className="w-[9rem] h-[12.4rem] flex-shrink-0 rounded-md overflow-hidden border border-gray-750 hover:border-cyan-400 cursor-pointer shadow-md transition-all hover:scale-110 hover:z-10 hover:shadow-[0_0_15px_rgba(6,182,212,0.6)]"
+                          className="w-[9rem] h-[12.4rem] flex-shrink-0 rounded-md overflow-hidden border border-zinc-750 hover:border-amber-400 cursor-pointer shadow-md transition-all hover:scale-110 hover:z-10 hover:shadow-[0_0_15px_rgba(212,175,55,0.6)]"
                           title={card.name}
                         >
                           {card.imageUrl ? (
-                            <img src={card.imageUrl} className="w-full h-full object-contain bg-gray-950" />
+                            <img src={card.imageUrl} className="w-full h-full object-contain bg-zinc-950" />
                           ) : (
-                            <div className="w-full h-full bg-gray-900 text-[13px] text-gray-300 flex flex-col items-center justify-center p-2 text-center font-bold">
+                            <div className="w-full h-full bg-zinc-900 text-[13px] text-zinc-300 flex flex-col items-center justify-center p-2 text-center font-bold">
                               {card.name}
                             </div>
                           )}
@@ -512,7 +512,7 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                       ))}
                     </div>
 
-                    <h3 className="text-[16px] font-extrabold text-cyan-400 uppercase tracking-wider mb-3">Optimal Play Path</h3>
+                    <h3 className="text-[16px] font-extrabold text-amber-400 uppercase tracking-wider mb-3">Optimal Play Path</h3>
                     
                     {!optimalPath ? (
                       <div className="flex-1 flex items-center justify-center text-sm text-red-400 border border-red-500/20 bg-red-950/10 p-4 rounded-lg">
@@ -521,9 +521,9 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                     ) : (
                       <div className="space-y-2 flex-1 min-h-0">
                         {/* Summary of path */}
-                        <div className="p-3 bg-gray-900 border border-cyan-800/25 rounded-lg text-[15px] mb-3 flex justify-between items-center font-semibold">
-                          <span className="text-gray-400">Commander castable on:</span>
-                          <span className="font-extrabold text-cyan-300 text-[18px]">Turn {optimalPath.turn}</span>
+                        <div className="p-3 bg-zinc-900 border border-amber-800/25 rounded-lg text-[15px] mb-3 flex justify-between items-center font-semibold">
+                          <span className="text-zinc-400">Commander castable on:</span>
+                          <span className="font-extrabold text-amber-300 text-[18px]">Turn {optimalPath.turn}</span>
                         </div>
 
                         {/* List of steps */}
@@ -561,17 +561,17 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                                 onClick={() => setSelectedStep(idx)}
                                 className={`w-full text-left p-3 rounded-lg border text-[15px] transition-all flex items-center justify-between ${
                                   selectedStep === idx
-                                    ? 'bg-cyan-900/35 border-cyan-500 shadow-md text-white'
-                                    : 'bg-gray-900/60 border-gray-800/80 text-gray-300 hover:bg-gray-850/50 hover:border-gray-700'
+                                    ? 'bg-amber-900/35 border-amber-500 shadow-md text-white'
+                                    : 'bg-zinc-900/60 border-zinc-800/80 text-zinc-300 hover:bg-zinc-850/50 hover:border-zinc-700'
                                 }`}
                               >
                                 <div className="flex flex-col gap-0.5">
-                                  <span className="font-bold text-[15px] text-cyan-400">Turn {t.turnNum}</span>
-                                  <span className="text-gray-300 truncate max-w-[25rem] text-[14px]">
+                                  <span className="font-bold text-[15px] text-amber-400">Turn {t.turnNum}</span>
+                                  <span className="text-zinc-300 truncate max-w-[25rem] text-[14px]">
                                     {t.actions[0]} {t.actions.length > 1 ? `(+${t.actions.length - 1} moves)` : ''}
                                   </span>
                                 </div>
-                                <div className="text-[13px] bg-gray-950/65 px-2 py-0.5 rounded text-gray-400 font-bold">
+                                <div className="text-[13px] bg-zinc-950/65 px-2 py-0.5 rounded text-zinc-400 font-bold">
                                   Select
                                 </div>
                               </button>
@@ -611,7 +611,7 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                       }
 
                       const activeTurnData = turns[selectedStep];
-                      if (!activeTurnData) return <div className="text-gray-500 text-center py-10">Select a turn to view details</div>;
+                      if (!activeTurnData) return <div className="text-zinc-500 text-center py-10">Select a turn to view details</div>;
 
                       // Parse the cards played in this turn from the action descriptions
                       // Action pattern examples:
@@ -672,28 +672,28 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                       return (
                         <div className="space-y-6 flex-1 flex flex-col">
                           <div>
-                            <h3 className="text-[17px] font-extrabold text-cyan-300 uppercase tracking-wider mb-3">
+                            <h3 className="text-[17px] font-extrabold text-amber-300 uppercase tracking-wider mb-3">
                               Turn {activeTurnData.turnNum} Timeline
                             </h3>
-                            <div className="p-4.5 bg-gray-900 border border-gray-800/80 rounded-xl space-y-3">
+                            <div className="p-4.5 bg-zinc-900 border border-zinc-800/80 rounded-xl space-y-3">
                               {activeTurnData.actions.map((act, actIdx) => {
                                 const card = getCardPlayed(act);
                                 return (
-                                  <div key={actIdx} className="flex items-center gap-4 py-2 border-b border-gray-850/50 last:border-b-0">
-                                    <div className="w-2 h-2 rounded-full bg-cyan-400" />
+                                  <div key={actIdx} className="flex items-center gap-4 py-2 border-b border-zinc-850/50 last:border-b-0">
+                                    <div className="w-2 h-2 rounded-full bg-amber-400" />
                                     <div className="flex-1 text-[15px]">
-                                      <p className="text-gray-200">{act}</p>
+                                      <p className="text-zinc-200">{act}</p>
                                     </div>
                                     {card && (
                                       <div 
                                         onClick={() => onCardClick(card)}
-                                        className="h-10 w-14 rounded-sm border border-gray-700 overflow-hidden cursor-pointer hover:border-cyan-400 transition-all flex-shrink-0"
+                                        className="h-10 w-14 rounded-sm border border-zinc-700 overflow-hidden cursor-pointer hover:border-amber-400 transition-all flex-shrink-0"
                                         title={`View details of ${card.name}`}
                                       >
                                         {card.imageUrl ? (
                                           <img src={card.imageUrl} className="w-full h-full object-cover" />
                                         ) : (
-                                          <div className="w-full h-full bg-gray-800 text-[11px] text-gray-400 flex items-center justify-center p-1 text-center font-bold">
+                                          <div className="w-full h-full bg-zinc-800 text-[11px] text-zinc-400 flex items-center justify-center p-1 text-center font-bold">
                                             {card.name.substring(0, 8)}
                                           </div>
                                         )}
@@ -707,7 +707,7 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
 
                           {/* Visual representations of cards played this turn */}
                           <div className="flex-shrink-0">
-                            <h4 className="text-[16px] font-extrabold text-gray-400 uppercase tracking-wider mb-4">Cards Played / Invoked</h4>
+                            <h4 className="text-[16px] font-extrabold text-zinc-400 uppercase tracking-wider mb-4">Cards Played / Invoked</h4>
                             <div className="flex flex-wrap gap-4 justify-start">
                               {activeTurnData.actions.map((act, actIdx) => {
                                 const card = getCardPlayed(act);
@@ -715,21 +715,21 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                                 return (
                                   <div 
                                     key={actIdx} 
-                                    className="flex flex-col items-center p-3 bg-gray-900/50 border border-gray-850/70 rounded-lg hover:border-cyan-500/40 transition-colors w-[15.5rem]"
+                                    className="flex flex-col items-center p-3 bg-zinc-900/50 border border-zinc-850/70 rounded-lg hover:border-amber-500/40 transition-colors w-[15.5rem]"
                                   >
                                     <div 
-                                      className="w-[14rem] h-[19.25rem] rounded-md overflow-hidden shadow-lg border border-gray-800 cursor-pointer hover:shadow-cyan-450/20 transition-all hover:scale-102 mb-2"
+                                      className="w-[14rem] h-[19.25rem] rounded-md overflow-hidden shadow-lg border border-zinc-800 cursor-pointer hover:shadow-amber-450/20 transition-all hover:scale-102 mb-2"
                                       onClick={() => onCardClick(card)}
                                     >
                                       {card.imageUrl ? (
                                         <img src={card.imageUrl} className="w-full h-full object-contain" alt={card.name} />
                                       ) : (
-                                        <div className="w-full h-full bg-gray-800 flex items-center justify-center text-xs text-gray-500">
+                                        <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-xs text-zinc-500">
                                           {card.name}
                                         </div>
                                       )}
                                     </div>
-                                    <span className="text-sm font-bold text-gray-250 text-center line-clamp-1 w-full">{card.name}</span>
+                                    <span className="text-sm font-bold text-zinc-250 text-center line-clamp-1 w-full">{card.name}</span>
                                   </div>
                                 );
                               })}
@@ -742,8 +742,8 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                             if (!battlefieldData) return null;
                             
                             return (
-                              <div className="mt-6 border-t border-gray-800/60 pt-4 flex-grow">
-                                <h4 className="text-[16px] font-extrabold text-cyan-400 uppercase tracking-wider mb-4">Battlefield at End of Turn</h4>
+                              <div className="mt-6 border-t border-zinc-800/60 pt-4 flex-grow">
+                                <h4 className="text-[16px] font-extrabold text-amber-400 uppercase tracking-wider mb-4">Battlefield at End of Turn</h4>
                                 <div className="space-y-6">
                                   {/* Lands Section */}
                                   {(() => {
@@ -763,16 +763,16 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                                             {Array.from({ length: untappedCount }).map((_, idx) => (
                                               <div 
                                                 key={idx}
-                                                className="absolute top-0 flex flex-col items-center p-2 bg-gray-900 border border-gray-800 rounded-lg w-[7.5rem] shadow-lg transition-all hover:-translate-y-1 hover:z-20 hover:border-cyan-500/50"
+                                                className="absolute top-0 flex flex-col items-center p-2 bg-zinc-900 border border-zinc-800 rounded-lg w-[7.5rem] shadow-lg transition-all hover:-translate-y-1 hover:z-20 hover:border-amber-500/50"
                                                 style={{ 
                                                   left: `${idx * 3.75}rem`,
                                                   zIndex: idx 
                                                 }}
                                               >
-                                                <div className="w-[6.3rem] h-[8.7rem] rounded overflow-hidden mb-1 border border-gray-800 bg-gray-950 flex items-center justify-center">
+                                                <div className="w-[6.3rem] h-[8.7rem] rounded overflow-hidden mb-1 border border-zinc-800 bg-zinc-950 flex items-center justify-center">
                                                   <img src={getBasicLandImage(type)} className="w-full h-full object-contain" alt={type} />
                                                 </div>
-                                                <span className="text-[10px] font-bold text-gray-400 text-center truncate w-full">{type}</span>
+                                                <span className="text-[10px] font-bold text-zinc-400 text-center truncate w-full">{type}</span>
                                               </div>
                                             ))}
                                           </div>
@@ -794,16 +794,16 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                                             {Array.from({ length: tappedCount }).map((_, idx) => (
                                               <div 
                                                 key={idx}
-                                                className="absolute top-0 flex flex-col items-center p-2 bg-gray-900 border border-gray-800 rounded-lg w-[7.5rem] shadow-lg transition-all hover:-translate-y-1 hover:z-20 hover:border-cyan-500/50"
+                                                className="absolute top-0 flex flex-col items-center p-2 bg-zinc-900 border border-zinc-800 rounded-lg w-[7.5rem] shadow-lg transition-all hover:-translate-y-1 hover:z-20 hover:border-amber-500/50"
                                                 style={{ 
                                                   left: `${idx * 3.75}rem`,
                                                   zIndex: idx 
                                                 }}
                                               >
-                                                <div className="w-[6.3rem] h-[8.7rem] rounded overflow-hidden mb-1 border border-gray-800 bg-gray-950 flex items-center justify-center rotate-6">
+                                                <div className="w-[6.3rem] h-[8.7rem] rounded overflow-hidden mb-1 border border-zinc-800 bg-zinc-950 flex items-center justify-center rotate-6">
                                                   <img src={getBasicLandImage(type)} className="w-full h-full object-contain" alt={type} />
                                                 </div>
-                                                <span className="text-[10px] font-bold text-gray-400 text-center truncate w-full">{type}</span>
+                                                <span className="text-[10px] font-bold text-zinc-400 text-center truncate w-full">{type}</span>
                                               </div>
                                             ))}
                                           </div>
@@ -822,14 +822,14 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                                       landCards.push(
                                         <div 
                                           key={`special-land-${idx}`} 
-                                          className={`flex flex-col items-center p-2 bg-gray-900/40 border border-gray-850 rounded-lg w-[7.5rem] relative ${s.tapped ? 'opacity-60' : ''}`}
+                                          className={`flex flex-col items-center p-2 bg-zinc-900/40 border border-zinc-850 rounded-lg w-[7.5rem] relative ${s.tapped ? 'opacity-60' : ''}`}
                                           onClick={() => card && onCardClick(card)}
                                         >
-                                          <div className={`w-[6.3rem] h-[8.7rem] rounded overflow-hidden mb-1 border border-gray-800 relative bg-gray-950 flex items-center justify-center cursor-pointer ${s.tapped ? 'rotate-6' : ''}`}>
+                                          <div className={`w-[6.3rem] h-[8.7rem] rounded overflow-hidden mb-1 border border-zinc-800 relative bg-zinc-950 flex items-center justify-center cursor-pointer ${s.tapped ? 'rotate-6' : ''}`}>
                                             {card?.imageUrl ? (
                                               <img src={card.imageUrl} className="w-full h-full object-contain" alt={s.name} />
                                             ) : (
-                                              <div className="w-full h-full bg-gray-800 text-[8px] text-gray-500 flex items-center justify-center p-1 text-center">{s.name}</div>
+                                              <div className="w-full h-full bg-zinc-800 text-[8px] text-zinc-500 flex items-center justify-center p-1 text-center">{s.name}</div>
                                             )}
                                             {s.tapped && (
                                               <span className="absolute bottom-1 right-1 bg-amber-600 text-white text-[7px] font-black px-1 rounded shadow">
@@ -837,7 +837,7 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                                               </span>
                                             )}
                                           </div>
-                                          <span className="text-[10px] font-bold text-gray-400 text-center truncate w-full">{s.name}</span>
+                                          <span className="text-[10px] font-bold text-zinc-400 text-center truncate w-full">{s.name}</span>
                                         </div>
                                       );
                                     });
@@ -846,7 +846,7 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
 
                                     return (
                                       <div>
-                                        <h5 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 border-b border-gray-900 pb-1">Lands</h5>
+                                        <h5 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2 border-b border-zinc-900 pb-1">Lands</h5>
                                         <div className="flex flex-wrap gap-3">
                                           {landCards}
                                         </div>
@@ -869,14 +869,14 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                                       nonLandCards.push(
                                         <div 
                                           key={`non-land-${idx}`} 
-                                          className={`flex flex-col items-center p-2 bg-gray-900/40 border border-gray-850 rounded-lg w-[7.5rem] relative ${s.tapped ? 'opacity-60' : ''}`}
+                                          className={`flex flex-col items-center p-2 bg-zinc-900/40 border border-zinc-850 rounded-lg w-[7.5rem] relative ${s.tapped ? 'opacity-60' : ''}`}
                                           onClick={() => card && onCardClick(card)}
                                         >
-                                          <div className={`w-[6.3rem] h-[8.7rem] rounded overflow-hidden mb-1 border border-gray-800 relative bg-gray-950 flex items-center justify-center cursor-pointer ${s.tapped ? 'rotate-6' : ''}`}>
+                                          <div className={`w-[6.3rem] h-[8.7rem] rounded overflow-hidden mb-1 border border-zinc-800 relative bg-zinc-950 flex items-center justify-center cursor-pointer ${s.tapped ? 'rotate-6' : ''}`}>
                                             {card?.imageUrl ? (
                                               <img src={card.imageUrl} className="w-full h-full object-contain" alt={s.name} />
                                             ) : (
-                                              <div className="w-full h-full bg-gray-800 text-[8px] text-gray-500 flex items-center justify-center p-1 text-center">{s.name}</div>
+                                              <div className="w-full h-full bg-zinc-800 text-[8px] text-zinc-500 flex items-center justify-center p-1 text-center">{s.name}</div>
                                             )}
                                             {s.hasSummoningSickness && (
                                               <span className="absolute top-1 left-1 bg-purple-600 text-white text-[7px] font-bold px-1 rounded shadow">
@@ -894,7 +894,7 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                                               </span>
                                             )}
                                           </div>
-                                          <span className="text-[10px] font-bold text-gray-400 text-center truncate w-full">{s.name}</span>
+                                          <span className="text-[10px] font-bold text-zinc-400 text-center truncate w-full">{s.name}</span>
                                         </div>
                                       );
                                     });
@@ -907,11 +907,11 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                                           className="flex flex-col items-center p-2 bg-amber-950/20 border border-amber-500/30 rounded-lg w-[7.5rem] relative"
                                           onClick={() => onCardClick(commanderCard)}
                                         >
-                                          <div className="w-[6.3rem] h-[8.7rem] rounded overflow-hidden mb-1 border border-amber-500/40 relative bg-gray-950 flex items-center justify-center cursor-pointer">
+                                          <div className="w-[6.3rem] h-[8.7rem] rounded overflow-hidden mb-1 border border-amber-500/40 relative bg-zinc-950 flex items-center justify-center cursor-pointer">
                                             {commanderCard.imageUrl ? (
                                               <img src={commanderCard.imageUrl} className="w-full h-full object-contain" alt={commanderCard.name} />
                                             ) : (
-                                              <div className="w-full h-full bg-gray-800 text-[8px] text-gray-500 flex items-center justify-center p-1 text-center">{commanderCard.name}</div>
+                                              <div className="w-full h-full bg-zinc-800 text-[8px] text-zinc-500 flex items-center justify-center p-1 text-center">{commanderCard.name}</div>
                                             )}
                                             <span className="absolute top-1 right-1 bg-amber-500 text-black text-[7.5px] font-black px-1.5 py-0.5 rounded shadow flex items-center gap-0.5">
                                               <CrownIcon className="w-2.5 h-2.5" /> CMD
@@ -926,7 +926,7 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
 
                                     return (
                                       <div>
-                                        <h5 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 border-b border-gray-900 pb-1">Non-Lands</h5>
+                                        <h5 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2 border-b border-zinc-900 pb-1">Non-Lands</h5>
                                         <div className="flex flex-wrap gap-3">
                                           {nonLandCards}
                                         </div>
@@ -955,7 +955,7 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                     {/* Header Info */}
                     <div className="px-5 py-4 bg-slate-900/40 border-b border-slate-900 flex justify-between items-center">
                       <div>
-                        <h3 className="text-sm font-extrabold text-cyan-400 uppercase tracking-wider">Geometric Variance Analysis</h3>
+                        <h3 className="text-sm font-extrabold text-amber-400 uppercase tracking-wider">Geometric Variance Analysis</h3>
                         <span className="text-[10px] text-slate-500 uppercase tracking-widest block mt-0.5">
                           X: Random Hand Vectors | Y: Temporal Achieve | Z: Decision Tree Thickness
                         </span>
@@ -1016,7 +1016,7 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                                           ? 'bg-amber-500 border-amber-300 text-black font-extrabold shadow-[0_0_15px_rgba(245,158,11,0.6)] scale-105 z-30'
                                           : 'bg-amber-600/90 border-amber-500/60 text-white shadow-[0_0_10px_rgba(245,158,11,0.3)] hover:scale-103 hover:border-amber-400'
                                         : isSelected
-                                          ? 'bg-cyan-900 border-cyan-400 text-white font-extrabold shadow-[0_0_15px_rgba(6,182,212,0.5)] scale-105 z-30'
+                                          ? 'bg-amber-900 border-amber-400 text-white font-extrabold shadow-[0_0_15px_rgba(212,175,55,0.5)] scale-105 z-30'
                                           : 'bg-slate-900/90 border-slate-800/80 text-slate-300 hover:border-slate-700 hover:bg-slate-850/90 hover:scale-103'
                                     }`}
                                     title={node.label}
@@ -1038,7 +1038,7 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
 
                     {/* Bottom-left stats card overlay */}
                     {optimalPath && (
-                      <div className="absolute bottom-5 left-5 p-4 bg-slate-900/90 border border-cyan-800/40 rounded-xl shadow-2xl flex gap-6 max-w-sm backdrop-blur-md z-15 select-none pointer-events-auto">
+                      <div className="absolute bottom-5 left-5 p-4 bg-slate-900/90 border border-amber-800/40 rounded-xl shadow-2xl flex gap-6 max-w-sm backdrop-blur-md z-15 select-none pointer-events-auto">
                         <div>
                           <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Consistency (GCS)</span>
                           <span className="text-3xl font-black text-white block mt-0.5">
@@ -1046,9 +1046,9 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                           </span>
                         </div>
                         <div className="border-l border-slate-800 pl-4 text-[13px] space-y-1 flex flex-col justify-center">
-                          <div>Nodes Evaluated: <span className="text-cyan-400 font-bold">{(optimalPath as any).exploredNodes?.length || 0}</span></div>
-                          <div>Branching Factor: <span className="text-cyan-400 font-bold">2.34</span></div>
-                          <div>Path Efficiency: <span className="text-cyan-400 font-bold">
+                          <div>Nodes Evaluated: <span className="text-amber-400 font-bold">{(optimalPath as any).exploredNodes?.length || 0}</span></div>
+                          <div>Branching Factor: <span className="text-amber-400 font-bold">2.34</span></div>
+                          <div>Path Efficiency: <span className="text-amber-400 font-bold">
                             {Math.round(100 - (optimalPath.turn - 2) * 8.5)}%
                           </span></div>
                         </div>
@@ -1069,7 +1069,7 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                           <div className="space-y-6 flex-grow flex flex-col min-h-0 text-slate-350">
                             {/* Node Header Info */}
                             <div className="p-4 bg-slate-900/50 border border-slate-800/60 rounded-xl flex-shrink-0">
-                              <span className="text-[12px] font-bold text-cyan-400 uppercase tracking-wider">Achievement Vector</span>
+                              <span className="text-[12px] font-bold text-amber-400 uppercase tracking-wider">Achievement Vector</span>
                               <h4 className="text-[17px] font-black text-white mt-1 leading-snug">{activeInspectorNode.label}</h4>
                               <div className="flex gap-4 mt-2.5 text-[14px] text-slate-300">
                                 <div>Turn: <span className="text-white font-bold">{activeInspectorNode.turn}</span></div>
@@ -1173,7 +1173,7 @@ export const GoldfishSimulatorModal: React.FC<GoldfishSimulatorModalProps> = ({
                                   
                                   return summaries.map((summary, idx) => (
                                     <div key={idx} className="text-[13px] border-b border-slate-900/60 py-2 last:border-b-0 text-slate-200 leading-relaxed">
-                                      <span className="text-cyan-500 font-bold mr-1">[{idx + 1}]</span> {summary}
+                                      <span className="text-amber-500 font-bold mr-1">[{idx + 1}]</span> {summary}
                                     </div>
                                   ));
                                 })()}

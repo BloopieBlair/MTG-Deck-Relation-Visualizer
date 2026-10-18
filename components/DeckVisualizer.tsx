@@ -475,6 +475,17 @@ export const DeckVisualizer = ({
               width = 2; 
               opacity = 0.9; 
           }
+
+          const activeCardId = selectedNodeForPopup?.id || selectedCardInListId || null;
+          if (activeCardId) {
+             const isConnectedToSelected = (sId === activeCardId || tId === activeCardId);
+             if (isConnectedToSelected) {
+                width = 3.5;
+                opacity = 1.0;
+             } else {
+                opacity = 0.15;
+             }
+          }
           
           if (activeLinkInfo && 
               activeLinkInfo.sourceId === sId && 
@@ -496,6 +507,10 @@ export const DeckVisualizer = ({
 
           l.attr("stroke", color).attr("stroke-width", width).attr("stroke-opacity", opacity);
       });
+      const activeCard = selectedNodeForPopup || cards.find(c => c.id === selectedCardInListId) || null;
+      const activeKeywordsSet = new Set(activeKeywords.map(k => k.name.toLowerCase()));
+      const activeCardKeywords = new Set((activeCard?.keywords || []).map(k => k.toLowerCase()).filter(k => activeKeywordsSet.has(k)));
+
       allNodes.attr("transform", d => `translate(${d.x},${d.y})`)
               .each(function(d) {
                   let nodeOpacity = 1.0;
@@ -503,6 +518,11 @@ export const DeckVisualizer = ({
                      const isHighlighted = highlightedColors.has('C') ? getCardColors(d).length === 0 : getCardColors(d).some(c => highlightedColors.has(c));
                      if (!isHighlighted) {
                         nodeOpacity = 0.15;
+                     }
+                  } else if (activeCard) {
+                     const isConnected = d.id === activeCard.id || (d.keywords || []).some(k => activeCardKeywords.has(k.toLowerCase()));
+                     if (!isConnected) {
+                        nodeOpacity = 0.25;
                      }
                   }
                   select(this).attr("opacity", nodeOpacity);
@@ -591,6 +611,10 @@ export const DeckVisualizer = ({
     if (!svgRef.current) return;
     const svg = select(svgRef.current);
     
+    const activeCard = selectedNodeForPopup || cards.find(c => c.id === selectedCardInListId) || null;
+    const activeKeywordsSet = new Set(activeKeywords.map(k => k.name.toLowerCase()));
+    const activeCardKeywords = new Set((activeCard?.keywords || []).map(k => k.toLowerCase()).filter(k => activeKeywordsSet.has(k)));
+
     // Update node opacities
     svg.selectAll<SVGGElement, D3Node>("g.node-group")
        .each(function(d) {
@@ -601,6 +625,11 @@ export const DeckVisualizer = ({
                : getCardColors(d).some(c => highlightedColors.has(c));
              if (!isHighlighted) {
                 nodeOpacity = 0.15;
+             }
+          } else if (activeCard) {
+             const isConnected = d.id === activeCard.id || (d.keywords || []).some(k => activeCardKeywords.has(k.toLowerCase()));
+             if (!isConnected) {
+                nodeOpacity = 0.25;
              }
           }
           select(this).attr("opacity", nodeOpacity);
@@ -623,6 +652,17 @@ export const DeckVisualizer = ({
              color = "#fff";
              width = 2;
              opacity = 0.9;
+          }
+
+          const activeCardId = selectedNodeForPopup?.id || selectedCardInListId || null;
+          if (activeCardId) {
+             const isConnectedToSelected = (sId === activeCardId || tId === activeCardId);
+             if (isConnectedToSelected) {
+                width = 3.5;
+                opacity = 1.0;
+             } else {
+                opacity = 0.15;
+             }
           }
           
           if (activeLinkInfo && 
@@ -647,7 +687,7 @@ export const DeckVisualizer = ({
             .attr("stroke-width", width)
             .attr("stroke-opacity", opacity);
        });
-  }, [highlightedColors, drawnCardIds, activeLinkInfo, keywordConfig]);
+  }, [highlightedColors, drawnCardIds, activeLinkInfo, keywordConfig, selectedNodeForPopup, selectedCardInListId]);
 
   useEffect(() => {
     if (panToNodeId && svgRef.current && zoomBehaviorRef.current && simulationRef.current) {
@@ -660,24 +700,24 @@ export const DeckVisualizer = ({
   }, [panToNodeId, svgDimensions]);
 
   return (
-    <div className="w-full h-full bg-gray-950 rounded-lg overflow-hidden relative flex flex-col text-sm" style={{ overscrollBehavior: 'none' }} >
+    <div className="w-full h-full canvas-dot-grid overflow-hidden relative flex flex-col text-sm" style={{ overscrollBehavior: 'none' }} >
         {drawnSampleHand && (
-            <div className="relative bg-gray-800/90 p-2 border-b-2 border-cyan-600 shadow-md flex-shrink-0">
+            <div className="relative bg-zinc-900/95 p-2.5 border-b border-amber-500/40 shadow-xl flex-shrink-0 backdrop-blur-md">
                 <div className="absolute top-2.5 right-2.5 flex gap-2 z-10">
                     {onOpenSimulator && (
                         <button 
                             onClick={onOpenSimulator}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-cyan-600 to-blue-700 hover:from-cyan-500 hover:to-blue-600 text-white rounded-md shadow-lg text-xs font-bold transition-all active:scale-95"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 rounded-md shadow text-xs font-semibold transition-all active:scale-95"
                         >
-                            <SparklesIcon className="w-3.5 h-3.5" /> Explore Gameplay
+                            <SparklesIcon className="w-3.5 h-3.5 text-amber-400" /> Simulate Hand (T1–T6)
                         </button>
                     )}
-                    <button onClick={onCloseSampleHand} className="p-1.5 bg-red-600 hover:bg-red-500 text-white rounded-md shadow-lg transition-colors"><XMarkIcon className="w-6 h-6" /></button>
+                    <button onClick={onCloseSampleHand} className="p-1.5 bg-zinc-800 hover:bg-rose-950/80 border border-zinc-700 hover:border-rose-500/50 text-zinc-300 hover:text-rose-200 rounded-md transition-colors"><XMarkIcon className="w-5 h-5" /></button>
                 </div>
-                <h4 className="text-xs font-semibold text-cyan-400 mb-1.5 text-center">Sample Hand</h4>
-                <div className="flex justify-center items-center space-x-1.5 overflow-x-auto pb-1 custom-scrollbar">
+                <h4 className="text-[11px] font-semibold uppercase tracking-widest text-amber-400/90 mb-2 text-center">Opening Hand Preview (7 Cards)</h4>
+                <div className="flex justify-center items-center space-x-2 overflow-x-auto pb-1 custom-scrollbar">
                     {drawnSampleHand.map((card, idx) => (
-                        <div key={idx} className="flex-shrink-0 w-[12rem] h-[16.5rem] rounded-sm overflow-hidden border border-gray-600 shadow-md hover:shadow-cyan-400/30 transition-all cursor-pointer" onClick={() => onCardImageClick(card)} onMouseEnter={() => setHoveredHandCardId(card.id)} onMouseLeave={() => setHoveredHandCardId(null)}>
+                        <div key={idx} className="flex-shrink-0 w-[11.5rem] h-[16rem] rounded-md overflow-hidden border border-zinc-700 shadow-lg hover:border-amber-400/60 transition-all cursor-pointer" onClick={() => onCardImageClick(card)} onMouseEnter={() => setHoveredHandCardId(card.id)} onMouseLeave={() => setHoveredHandCardId(null)}>
                             <img src={card.imageUrl || HAND_PLACEHOLDER_IMAGE_URL} className="w-full h-full object-contain" />
                         </div>
                     ))}
@@ -691,13 +731,13 @@ export const DeckVisualizer = ({
                 if (!hoveredHandCard) return null;
                 return (
                     <div 
-                        className="absolute z-50 pointer-events-none rounded-lg overflow-hidden border-2 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.6)] bg-gray-950 animate-fadeIn"
+                        className="absolute z-50 pointer-events-none rounded-xl overflow-hidden border border-amber-500/60 shadow-2xl bg-zinc-950 animate-fadeIn"
                         style={{ 
                             top: '19.5rem', 
                             left: '50%', 
                             transform: 'translateX(-50%)',
-                            width: 'min(30rem, 90vw)',
-                            height: 'min(41.25rem, 125vw)',
+                            width: 'min(28rem, 90vw)',
+                            height: 'min(39rem, 125vw)',
                         }}
                     >
                         <img src={hoveredHandCard.imageUrl || HAND_PLACEHOLDER_IMAGE_URL} className="w-full h-full object-contain" alt={hoveredHandCard.name} />
@@ -709,13 +749,13 @@ export const DeckVisualizer = ({
             <svg ref={svgRef}><defs></defs></svg>
             
             {/* Fit to Screen Button */}
-            <div className="absolute bottom-4 right-4 z-40 flex flex-col gap-2">
+            <div className="absolute bottom-3 right-3 z-40 flex flex-col gap-2">
                 <button
                     onClick={(e) => { e.stopPropagation(); handleFitToScreen(); }}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-gray-900/90 hover:bg-gray-800 border border-cyan-800/40 rounded-lg shadow-xl text-xs font-bold text-cyan-400 hover:text-cyan-300 transition-all active:scale-95 select-none"
-                    title="Fit whole graph to screen"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-700/80 hover:border-amber-500/40 rounded-lg shadow-xl text-xs font-medium text-zinc-300 hover:text-amber-200 transition-all active:scale-95 select-none backdrop-blur-md"
+                    title="Recenter & fit graph to screen"
                 >
-                    🔍 Fit Graph
+                    <span>⊹ Center Graph</span>
                 </button>
             </div>
             {activeLinkInfo && (() => {

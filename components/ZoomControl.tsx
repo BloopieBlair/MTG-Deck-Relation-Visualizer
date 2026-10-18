@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface ZoomControlProps {
@@ -24,13 +23,13 @@ export const ZoomControl: React.FC<ZoomControlProps> = ({ zoomLevel, onZoomChang
   };
 
   return (
-    <div className="flex items-center space-x-2 text-xs text-gray-300">
+    <div className="hidden lg:flex items-center space-x-1.5 text-xs text-zinc-400 bg-zinc-900/80 border border-zinc-800 rounded-lg px-2 py-1">
       <button
         onClick={decreaseZoom}
         disabled={zoomLevel <= MIN_ZOOM}
-        className="px-2 py-1 bg-cyan-700 hover:bg-cyan-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        aria-label="Decrease zoom"
-        title="Decrease Zoom"
+        className="w-5 h-5 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded disabled:opacity-40 transition-colors"
+        aria-label="Decrease UI scale"
+        title="Decrease UI Scale"
       >
         -
       </button>
@@ -41,19 +40,19 @@ export const ZoomControl: React.FC<ZoomControlProps> = ({ zoomLevel, onZoomChang
         step={ZOOM_STEP}
         value={zoomLevel}
         onChange={handleZoomChange}
-        className="w-20 md:w-24 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer range-sm accent-cyan-500"
-        aria-label="Zoom slider"
+        className="w-16 h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-amber-400"
+        aria-label="UI Scale slider"
       />
       <button
         onClick={increaseZoom}
         disabled={zoomLevel >= MAX_ZOOM}
-        className="px-2 py-1 bg-cyan-700 hover:bg-cyan-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        aria-label="Increase zoom"
-        title="Increase Zoom"
+        className="w-5 h-5 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded disabled:opacity-40 transition-colors"
+        aria-label="Increase UI scale"
+        title="Increase UI Scale"
       >
         +
       </button>
-      <span className="w-16 text-center tabular-nums" aria-live="polite">Zoom: {zoomLevel}%</span>
+      <span className="w-10 text-right font-mono text-[11px] text-zinc-400 tabular-nums">{zoomLevel}%</span>
     </div>
   );
 };

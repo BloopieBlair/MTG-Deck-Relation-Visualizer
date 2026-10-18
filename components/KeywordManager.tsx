@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import type { KeywordStyle } from '../types';
 import { PlusIcon, TrashIcon, EyeIcon, EyeSlashIcon } from './icons'; 
@@ -11,16 +10,15 @@ interface KeywordManagerProps {
 
 export const KeywordManager: React.FC<KeywordManagerProps> = ({ keywordStyles, onKeywordStylesChange }) => {
   const [newKeywordName, setNewKeywordName] = useState('');
-  const [newKeywordColor, setNewKeywordColor] = useState('#06b6d4'); // Default Cyan
+  const [newKeywordColor, setNewKeywordColor] = useState('#d4af37'); // Default Mythic Gold
 
   const handleAddKeyword = useCallback(() => {
     const trimmedName = newKeywordName.trim().toLowerCase();
     if (trimmedName === '') {
-      alert('Keyword name cannot be empty.');
       return;
     }
     if (keywordStyles.some(kw => kw.name.toLowerCase() === trimmedName)) {
-      alert('Keyword already exists (case-insensitive).');
+      alert('Keyword already exists.');
       return;
     }
     const newKeyword: KeywordStyle = {
@@ -31,7 +29,7 @@ export const KeywordManager: React.FC<KeywordManagerProps> = ({ keywordStyles, o
     };
     onKeywordStylesChange([...keywordStyles, newKeyword]);
     setNewKeywordName('');
-    setNewKeywordColor('#06b6d4'); 
+    setNewKeywordColor('#d4af37'); 
   }, [newKeywordName, newKeywordColor, keywordStyles, onKeywordStylesChange]);
 
   const handleUpdateKeyword = useCallback((id: string, field: keyof KeywordStyle, value: string | boolean) => {
@@ -51,96 +49,96 @@ export const KeywordManager: React.FC<KeywordManagerProps> = ({ keywordStyles, o
   }, [keywordStyles, onKeywordStylesChange]);
 
   return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-cyan-400">Keyword Configuration</h3>
-      <p className="text-xs text-gray-400 mb-2.5">
-        Define custom keywords to analyze your deck. Add keywords, assign a color, and toggle their visibility.
-      </p>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
+        <h3 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest">
+          Synergy Mechanics
+        </h3>
+        <span className="text-[10px] font-mono text-zinc-500">
+          {keywordStyles.filter(k => k.enabled).length}/{keywordStyles.length} active
+        </span>
+      </div>
       
-      <div className="flex items-end gap-2 p-3 bg-gray-800/80 rounded-md border border-cyan-700/20">
-        <div className="flex-grow">
-          <label htmlFor="new-keyword-name" className="block text-xs font-medium text-gray-300">New Keyword Name</label>
-          <input
-            id="new-keyword-name"
-            type="text"
-            value={newKeywordName}
-            onChange={(e) => setNewKeywordName(e.target.value)}
-            placeholder="e.g., Flying"
-            className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-2 px-3 text-sm text-gray-200 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500"
-          />
-        </div>
-        <div>
-          <label htmlFor="new-keyword-color" className="block text-xs font-medium text-gray-300">Color</label>
-          <input
-            id="new-keyword-color"
-            type="color"
-            value={newKeywordColor}
-            onChange={(e) => setNewKeywordColor(e.target.value)}
-            className="mt-1 block w-full h-10 rounded-md border-gray-600 cursor-pointer bg-gray-700"
-          />
-        </div>
+      <div className="flex items-center gap-1.5 p-2 bg-zinc-900/60 rounded-lg border border-zinc-800/80">
+        <input
+          id="new-keyword-name"
+          type="text"
+          value={newKeywordName}
+          onChange={(e) => setNewKeywordName(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleAddKeyword(); }}
+          placeholder="Add mechanic (e.g. Token)..."
+          className="flex-grow min-w-0 bg-zinc-950 border border-zinc-800 rounded px-2.5 py-1.5 text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+        />
+        <input
+          id="new-keyword-color"
+          type="color"
+          value={newKeywordColor}
+          onChange={(e) => setNewKeywordColor(e.target.value)}
+          className="w-7 h-7 rounded border border-zinc-700 cursor-pointer bg-zinc-950 shrink-0"
+          title="Select link color"
+        />
         <button
           onClick={handleAddKeyword}
-          className="p-2 bg-cyan-600 hover:bg-cyan-500 rounded-md text-white transition-colors h-10"
+          className="p-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded text-amber-300 transition-colors shrink-0"
           title="Add Keyword"
         >
-          <PlusIcon className="w-5 h-5" />
+          <PlusIcon className="w-4 h-4" />
         </button>
       </div>
 
       {keywordStyles.length > 0 && (
-        <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+        <div className="space-y-1 max-h-56 overflow-y-auto pr-1 custom-scrollbar">
           {keywordStyles.map(kw => (
-            <div key={kw.id} className="flex items-center gap-2 p-2 bg-gray-700/60 hover:bg-gray-700/80 transition-colors rounded">
+            <div
+              key={kw.id}
+              className={`flex items-center gap-2 px-2 py-1.5 rounded-md border transition-all ${
+                kw.enabled
+                  ? 'bg-zinc-900/70 border-zinc-800/80 hover:border-zinc-700'
+                  : 'bg-zinc-950/40 border-zinc-900 opacity-50'
+              }`}
+            >
               <input
                 type="color"
                 value={kw.color}
                 onChange={(e) => handleUpdateKeyword(kw.id, 'color', e.target.value)}
-                className="w-8 h-8 rounded border-gray-500 cursor-pointer bg-transparent flex-shrink-0"
+                className="w-4 h-4 rounded-full border-0 cursor-pointer bg-transparent flex-shrink-0"
                 title="Change keyword color"
               />
               <input
                 type="text"
                 value={kw.name} 
-                onBlur={(e) => { // Save on blur
-                    const newName = e.target.value.trim().toLowerCase();
-                    if (newName && !keywordStyles.some(k => k.id !== kw.id && k.name === newName)) {
-                         handleUpdateKeyword(kw.id, 'name', newName);
-                    } else if (newName === "") {
-                         alert("Keyword name cannot be empty. Reverting.");
-                         e.target.value = kw.name; // Revert if empty
-                    } else if (keywordStyles.some(k => k.id !== kw.id && k.name === newName)) {
-                         alert("Keyword name already exists. Reverting.");
-                         e.target.value = kw.name; // Revert if duplicate
-                    }
+                onBlur={(e) => {
+                  const newName = e.target.value.trim().toLowerCase();
+                  if (newName && !keywordStyles.some(k => k.id !== kw.id && k.name === newName)) {
+                    handleUpdateKeyword(kw.id, 'name', newName);
+                  } else {
+                    e.target.value = kw.name;
+                  }
                 }}
-                onChange={(e) => { 
-                    handleUpdateKeyword(kw.id, 'name', e.target.value);
-                }}
-                className="flex-grow w-full min-w-0 bg-transparent border-none p-1 rounded text-gray-200 text-sm focus:outline-none focus:ring-1 focus:ring-cyan-500"
-                title="Edit keyword name (saved on blur)"
+                onChange={(e) => handleUpdateKeyword(kw.id, 'name', e.target.value)}
+                className="flex-grow w-full min-w-0 bg-transparent border-none px-1 py-0.5 rounded text-zinc-200 text-xs capitalize focus:outline-none focus:ring-1 focus:ring-amber-500/40"
+                title="Edit mechanic name"
               />
               <button
                 onClick={() => handleUpdateKeyword(kw.id, 'enabled', !kw.enabled)}
-                className={`p-1 rounded flex-shrink-0 ${kw.enabled ? 'text-teal-400 hover:text-teal-300' : 'text-gray-500 hover:text-gray-400'} transition-colors`}
-                title={kw.enabled ? "Disable Keyword Visibility" : "Enable Keyword Visibility"}
+                className={`p-1 rounded flex-shrink-0 transition-colors ${
+                  kw.enabled ? 'text-amber-400/90 hover:text-amber-300' : 'text-zinc-600 hover:text-zinc-400'
+                }`}
+                title={kw.enabled ? "Hide mechanic links" : "Show mechanic links"}
               >
-                {kw.enabled ? <EyeIcon className="w-5 h-5" /> : <EyeSlashIcon className="w-5 h-5" />}
+                {kw.enabled ? <EyeIcon className="w-3.5 h-3.5" /> : <EyeSlashIcon className="w-3.5 h-3.5" />}
               </button>
               <button
                 onClick={() => handleRemoveKeyword(kw.id)}
-                className="p-1 text-red-400 hover:text-red-300 rounded flex-shrink-0 transition-colors"
-                title="Remove Keyword"
+                className="p-1 text-zinc-600 hover:text-rose-400 rounded flex-shrink-0 transition-colors"
+                title="Remove mechanic"
               >
-                <TrashIcon className="w-5 h-5" />
+                <TrashIcon className="w-3.5 h-3.5" />
               </button>
             </div>
           ))}
         </div>
       )}
-       {keywordStyles.length === 0 && (
-        <p className="text-sm text-gray-400 text-center py-2">No keywords configured. Add some above to see relations!</p>
-       )}
     </div>
   );
 };

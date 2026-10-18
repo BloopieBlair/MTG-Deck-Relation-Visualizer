@@ -207,6 +207,7 @@ export default defineConfig(({ command, mode }) => {
     const geminiApiKey = command === 'serve' ? (env.GEMINI_API_KEY || '') : '';
 
     return {
+      base: './',
       server: {
         port: 3000,
         host: '127.0.0.1',

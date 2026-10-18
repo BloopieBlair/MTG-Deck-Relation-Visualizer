@@ -15,16 +15,18 @@ import { ZoomControl } from './components/ZoomControl';
 import { AddCardModal } from './components/AddCardModal';
 import { ApiKeyModal } from './components/ApiKeyModal';
 import { DeckAnalysisModal } from './components/DeckAnalysisModal';
+import { ExportDeckModal } from './components/ExportDeckModal';
 import { CommanderSelectionModal } from './components/CommanderSelectionModal'; 
 import { DeckListView } from './components/DeckListView';
 import { HoveredCardDisplay } from './components/HoveredCardDisplay';
 import { GoldfishSimulatorModal } from './components/GoldfishSimulatorModal';
 import { MtgaCollectionDrawer } from './components/MtgaCollectionDrawer';
+import { FooterBanner } from './components/FooterBanner';
 import { fetchMtgaCollection } from './services/mtgaLogService';
-import { PINNED_SEARCH_COLORS, ACTIVE_SEARCH_HIGHLIGHT_COLOR, SINGLE_SEARCH_RESULT_HIGHLIGHT_COLOR, DEFAULT_KEYWORD_STYLES, MOCK_CARD_DATABASE } from './constants';
+import { PINNED_SEARCH_COLORS, ACTIVE_SEARCH_HIGHLIGHT_COLOR, SINGLE_SEARCH_RESULT_HIGHLIGHT_COLOR, DEFAULT_KEYWORD_STYLES, MOCK_CARD_DATABASE, SAMPLE_DECK_ANIM_PAKAL, SAMPLE_DECK_SLIVERS } from './constants';
 import { parseCsvContent } from './services/csvParser';
 import { fetchCardDataFromScryfall, fetchCardsBatch, parseScryfallManaCost, normalizeCardName } from './services/scryfallService';
-import { parseDecklistWithGemini, fetchCardKeywordsWithGemini } from './services/geminiService';
+import { parseDecklistWithGemini, fetchCardKeywordsWithGemini, exchangeOpenRouterCodeForKey, DEFAULT_OPENROUTER_MODEL } from './services/geminiService';
 import type { RawDeckCard, ProcessedDeckCard, KeywordStyle, ManaAnalysisData, ParsedManaCost, ManaSymbol, ManaColor, D3Node, PinnedSearch, OrphanClusterInfo, AiClient, MtgaCardItem } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { HandIcon, XMarkIcon, PlusIcon, MapPinIcon, ArrowUturnLeftIcon, DownloadIcon, ShieldCheckIcon, CrownIcon, DocumentIcon, KeyIcon, SparklesIcon } from './components/icons';
@@ -93,6 +95,7 @@ const App: React.FC = () => {
   
   const [showApiKeyModal, setShowApiKeyModal] = useState<boolean>(false);
   const [showDeckAnalysisModal, setShowDeckAnalysisModal] = useState<boolean>(false);
+  const [showExportDeckModal, setShowExportDeckModal] = useState<boolean>(false);
 
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [history, setHistory] = useState<ProcessedDeckCard[][]>([[]]);
@@ -331,9 +334,27 @@ const App: React.FC = () => {
   }, [processedDeckCards, updateHistory, isUndoRedoAction, history, historyIndex]);
 
   const initializeAI = useCallback(() => {
-    const mode = localStorage.getItem('ai_mode') || 'gemini';
+    const mode = localStorage.getItem('ai_mode') || 'openrouter';
 
-    if (mode === 'local') {
+    if (mode === 'openrouter') {
+      const orKey = (localStorage.getItem('openrouter_api_key') || '').trim();
+      const orModel = localStorage.getItem('openrouter_model') || DEFAULT_OPENROUTER_MODEL;
+      if (!orKey) {
+        setAiError(null);
+        setAiPoweredFeaturesEnabled(false);
+        setAiClient(null);
+        setIsInitializingAI(false);
+        return;
+      }
+      setAiClient({
+        type: 'openrouter',
+        openRouterKey: orKey,
+        openRouterModel: orModel,
+      });
+      setAiPoweredFeaturesEnabled(true);
+      setAiError(null);
+      setIsInitializingAI(false);
+    } else if (mode === 'local') {
       const host = localStorage.getItem('local_ai_host') || 'http://localhost:11434';
       const model = localStorage.getItem('local_ai_model') || 'llama3';
 
@@ -351,7 +372,7 @@ const App: React.FC = () => {
       const apiKey = localStorage.getItem('gemini_api_key') || envApiKey;
       
       if (!apiKey) {
-        setAiError("API Key missing. Please set it in options.");
+        setAiError(null);
         setAiPoweredFeaturesEnabled(false);
         setAiClient(null);
         setIsInitializingAI(false);
@@ -385,11 +406,29 @@ const App: React.FC = () => {
       }
     }
 
-    if (!localStorage.getItem('app_setup_completed')) {
-      setShowApiKeyModal(true);
+    // Handle OpenRouter OAuth PKCE callback if returning with ?code=...
+    const params = new URLSearchParams(window.location.search);
+    const oauthCode = params.get('code');
+    if (oauthCode) {
+      const verifier = sessionStorage.getItem('openrouter_pkce_verifier');
+      // Clean URL query params immediately
+      window.history.replaceState({}, document.title, window.location.pathname);
+      exchangeOpenRouterCodeForKey(oauthCode, verifier)
+        .then((newKey) => {
+          localStorage.setItem('openrouter_api_key', newKey);
+          localStorage.setItem('ai_mode', 'openrouter');
+          localStorage.setItem('app_setup_completed', 'true');
+          sessionStorage.removeItem('openrouter_pkce_verifier');
+          initializeAI();
+        })
+        .catch((err) => {
+          console.error('OpenRouter OAuth failed:', err);
+          setAiError('OpenRouter connection failed. Please try again.');
+          initializeAI();
+        });
+    } else {
+      initializeAI();
     }
-
-    initializeAI();
   }, [initializeAI]);
 
   useEffect(() => {
@@ -516,31 +555,48 @@ const App: React.FC = () => {
   const processUploadedDeck = useCallback(async (decklistText: string, file: File) => {
     setIsLoading(true);
     setError(null);
-    setLoadingDetailMessage(aiClient?.type === 'local' ? "Parsing decklist with Local AI (Ollama)..." : "Parsing decklist with Gemini AI...");
+    setLoadingDetailMessage("Parsing decklist...");
 
     try {
-      let parsedCards: RawDeckCard[] = [];
-      if (aiClient && aiPoweredFeaturesEnabled) {
+      const fileType = file.name.split('.').pop()?.toLowerCase();
+      // Fast, deterministic rule-based parser first (instant, zero API cost)
+      let parsedCards: RawDeckCard[] = fileType === 'csv'
+        ? parseCsvContent(decklistText)
+        : parseSimpleTxtDecklist(decklistText);
+
+      // Only fall back to AI parser if rule-based parser found nothing and AI is connected
+      if (parsedCards.length === 0 && aiClient && aiPoweredFeaturesEnabled) {
+        setLoadingDetailMessage("Parsing decklist with AI...");
         try {
           parsedCards = await parseDecklistWithGemini(aiClient, decklistText);
         } catch (e) {
-          console.warn("AI parsing failed, falling back to rule-based parser.");
+          console.warn("AI parsing failed:", e);
         }
-      }
-
-      if (parsedCards.length === 0) {
-        const fileType = file.name.split('.').pop()?.toLowerCase();
-        parsedCards = fileType === 'csv' ? parseCsvContent(decklistText) : parseSimpleTxtDecklist(decklistText);
       }
 
       const newProcessedCards = await fetchCardDataAndProcess(parsedCards, setLoadingDetailMessage);
       setProcessedDeckCards(newProcessedCards);
+
+      // Auto-select Commander if the first card in the list is a legendary creature/planeswalker
+      if (newProcessedCards.length > 0) {
+        const firstCard = newProcessedCards[0];
+        const tl = (firstCard.typeLine || '').toLowerCase();
+        if (tl.includes('legendary') && (tl.includes('creature') || tl.includes('planeswalker'))) {
+          setCommanderId(firstCard.id);
+        }
+      }
     } catch (e: any) {
       setError(`Failed to process deck: ${e.message}`);
     } finally {
       setIsLoading(false);
     }
   }, [fetchCardDataAndProcess, aiClient, aiPoweredFeaturesEnabled]);
+
+  const handleLoadSampleDeck = useCallback((sampleType: 'animPakal' | 'slivers') => {
+    const sampleText = sampleType === 'animPakal' ? SAMPLE_DECK_ANIM_PAKAL : SAMPLE_DECK_SLIVERS;
+    const sampleFile = new File([sampleText], `${sampleType}.txt`, { type: 'text/plain' });
+    processUploadedDeck(sampleText, sampleFile);
+  }, [processUploadedDeck]);
 
   const handleDrawHand = useCallback(() => {
     if (processedDeckCards.length === 0) return;
@@ -631,9 +687,41 @@ const App: React.FC = () => {
     }
   }, [history, historyIndex]);
 
+  const handleSwapCard = useCallback(async (oldCardId: string, newCardName: string) => {
+    if (!newCardName.trim()) return;
+    setIsLoading(true);
+    setLoadingDetailMessage(`Fetching data for "${newCardName}"...`);
+    try {
+      const scryfallData = await fetchCardDataFromScryfall(newCardName);
+      if (scryfallData) {
+        const replacement: ProcessedDeckCard = {
+          id: normalizeCardName(scryfallData.nameScryfall || newCardName),
+          name: scryfallData.nameScryfall || newCardName,
+          quantity: 1,
+          keywords: scryfallData.keywords,
+          text: scryfallData.text || '',
+          imageUrl: scryfallData.imageUrl,
+          manaCostString: scryfallData.manaCostString,
+          producesMana: scryfallData.producesMana,
+          parsedManaCost: parseScryfallManaCost(scryfallData.manaCostString),
+          colors: scryfallData.colors,
+          typeLine: scryfallData.typeLine,
+          colorIdentity: scryfallData.colorIdentity
+        };
+        setProcessedDeckCards(prev => prev.map(c => c.id === oldCardId ? { ...replacement, quantity: c.quantity } : c));
+        if (commanderId === oldCardId) {
+          setCommanderId(replacement.id);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to swap card:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [commanderId]);
+
   const handleApplyDeckChanges = useCallback((suggestions: string[]) => {
     console.log("Applying deck changes:", suggestions);
-    // Placeholder for applying AI suggestions to the deck
   }, []);
 
   const isCardLegendaryCreature = useCallback((card: ProcessedDeckCard) => {
@@ -646,318 +734,360 @@ const App: React.FC = () => {
     return isLegendary && isCreatureOrPlaneswalker;
   }, []);
 
+  const aiBadgeText = aiPoweredFeaturesEnabled
+    ? aiClient?.type === 'openrouter'
+      ? 'OpenRouter AI'
+      : aiClient?.type === 'local'
+        ? 'Local AI'
+        : 'Gemini AI'
+    : 'Connect Free AI';
+
   if (isInitializingAI) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-black text-gray-200">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#09090b] text-zinc-200">
         <LoadingSpinner />
-        <p className="mt-3 text-cyan-400 font-mono tracking-widest">INITIALIZING MTG_CORE ENGINE...</p>
+        <p className="mt-3 text-amber-400/90 font-mono text-xs tracking-widest uppercase">Initializing Aethergraph Engine...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-screen bg-black text-gray-200 text-sm overflow-hidden select-none">
-      <header className="bg-gray-900 shadow-xl p-3 border-b border-cyan-800/50 flex items-center justify-between z-30">
-        <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
-                MTG Deck Relation Visualizer
-            </h1>
-            <div className="h-6 w-px bg-gray-700 mx-2 hidden md:block" />
-            <div className="hidden md:flex gap-4">
-                <button onClick={() => setActiveTab('visualizer')} className={`px-4 py-1 rounded transition-all font-semibold text-xs tracking-widest uppercase ${activeTab === 'visualizer' ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/20' : 'text-gray-500 hover:text-gray-300'}`}>Graph</button>
-                <button onClick={() => setActiveTab('manaCurve')} className={`px-4 py-1 rounded transition-all font-semibold text-xs tracking-widest uppercase ${activeTab === 'manaCurve' ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/20' : 'text-gray-500 hover:text-gray-300'}`}>Curve</button>
+    <div className="min-h-screen bg-[#09090b] text-zinc-200 text-sm flex flex-col select-none">
+      {/* Main Full-Viewport Workspace (Scroll down past 100vh to view the single FooterBanner) */}
+      <div className="flex flex-col h-screen overflow-hidden shrink-0">
+        <header className="bg-zinc-950/95 backdrop-blur-md px-4 py-2.5 border-b border-zinc-800/80 flex items-center justify-between z-30">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-md bg-gradient-to-br from-amber-500/20 to-amber-700/10 border border-amber-500/40 flex items-center justify-center shadow-sm">
+                <CrownIcon className="w-4 h-4 text-amber-400" />
+              </div>
+              <div className="flex items-baseline gap-2">
+                <h1 className="font-display text-lg font-bold tracking-wider text-zinc-100">
+                  AETHERGRAPH
+                </h1>
+                <span className="hidden xl:inline text-[11px] font-medium text-zinc-500 tracking-wide">
+                  MTG Synergy &amp; Manifold Studio
+                </span>
+              </div>
             </div>
-        </div>
-        <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                setShowRightSidebar(true);
-                setRightPanelTab(prev => prev === 'deck' ? 'split' : prev);
-              }}
-              className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-cyan-900/60 to-blue-900/60 hover:from-cyan-800 hover:to-blue-800 rounded-md border border-cyan-700/60 transition-all text-xs font-semibold text-cyan-300 shadow-lg shadow-cyan-950/50 group"
-              title="View MTG Arena Collection Cards in Right Sidebar"
-            >
-              <SparklesIcon className="w-4 h-4 text-cyan-400 group-hover:rotate-12 transition-transform" />
-              <span>MTGA Cards</span>
-              <span className="px-1.5 py-0.2 rounded bg-cyan-950 text-cyan-200 font-mono text-[10px] border border-cyan-800">
-                {mtgaCards.length || '...'}
-              </span>
-            </button>
+
+            <div className="h-5 w-px bg-zinc-800 hidden md:block" />
+
+            <div className="hidden md:flex bg-zinc-900/90 p-0.5 rounded-lg border border-zinc-800/90">
+              <button
+                onClick={() => setActiveTab('visualizer')}
+                className={`px-3.5 py-1 rounded-md transition-all font-medium text-xs ${
+                  activeTab === 'visualizer'
+                    ? 'bg-zinc-800 text-amber-300 border border-amber-500/30 shadow-sm'
+                    : 'text-zinc-400 hover:text-zinc-200 border border-transparent'
+                }`}
+              >
+                Synergy Graph
+              </button>
+              <button
+                onClick={() => setActiveTab('manaCurve')}
+                className={`px-3.5 py-1 rounded-md transition-all font-medium text-xs ${
+                  activeTab === 'manaCurve'
+                    ? 'bg-zinc-800 text-amber-300 border border-amber-500/30 shadow-sm'
+                    : 'text-zinc-400 hover:text-zinc-200 border border-transparent'
+                }`}
+              >
+                Mana &amp; Odds
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            {mtgaCards.length > 0 && (
+              <button
+                onClick={() => {
+                  setShowRightSidebar(true);
+                  setRightPanelTab(prev => prev === 'deck' ? 'split' : prev);
+                }}
+                className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 rounded-lg border border-zinc-800 hover:border-zinc-700 transition-all text-xs font-medium text-zinc-300 group"
+                title="Browse Local MTG Arena Collection in Right Sidebar"
+              >
+                <span className="text-amber-400/90">🎴</span>
+                <span className="hidden sm:inline">Arena Collection</span>
+                <span className="px-1.5 py-0.2 rounded bg-zinc-950 text-zinc-400 font-mono text-[10px] border border-zinc-800">
+                  {mtgaCards.length.toLocaleString()}
+                </span>
+              </button>
+            )}
+
             <button
               onClick={() => setShowApiKeyModal(true)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-md border border-gray-700 transition-colors text-xs font-semibold text-cyan-400 group"
-              title={aiError ? `AI Error: ${aiError} - Click to fix` : aiPoweredFeaturesEnabled ? `AI Active (${aiClient?.type === 'local' ? 'Local' : 'Gemini'})` : "AI Inactive - Click to configure"}
+              className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 rounded-lg border border-zinc-800 hover:border-amber-500/40 transition-all text-xs font-medium text-zinc-200 group"
+              title={aiError ? `AI Error: ${aiError} - Click to fix` : aiPoweredFeaturesEnabled ? `AI Active (${aiBadgeText})` : "Connect OpenRouter (Free Models), Gemini, or Local Ollama"}
             >
-              <div className={`w-2 h-2 rounded-full ${aiError ? 'bg-red-500 animate-pulse' : aiPoweredFeaturesEnabled ? (aiClient?.type === 'local' ? 'bg-blue-500 shadow-[0_0_5px_rgba(59,130,246,0.6)]' : 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.6)]') : 'bg-amber-500'}`} />
-              <span className="hidden sm:inline text-gray-300 group-hover:text-cyan-400 transition-colors">
-                {aiPoweredFeaturesEnabled ? (aiClient?.type === 'local' ? 'Local AI' : 'Gemini AI') : 'AI Config'}
+              <div className={`w-2 h-2 rounded-full ${
+                aiError
+                  ? 'bg-rose-500 animate-pulse'
+                  : aiPoweredFeaturesEnabled
+                    ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]'
+                    : 'bg-amber-400'
+              }`} />
+              <span className="text-zinc-300 group-hover:text-amber-200 transition-colors">
+                {aiBadgeText}
               </span>
             </button>
+
             {!showRightSidebar && (
               <button
                 onClick={() => {
                   setShowRightSidebar(true);
-                  setRightPanelTab('split');
+                  setRightPanelTab('deck');
                 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-cyan-400 hover:text-white rounded-md border border-cyan-700/60 transition-all text-xs font-semibold shadow-md active:scale-95"
-                title="Open Right Deck & Collection Panel"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-amber-200 rounded-lg border border-zinc-800 transition-all text-xs font-medium"
+                title="Open Right Inspector Panel"
               >
-                <span>📋 Open Panel</span>
+                <span>Inspector</span>
               </button>
             )}
+
             <ZoomControl zoomLevel={zoomLevel} onZoomChange={setZoomLevel} />
-        </div>
-      </header>
-
-      <div className="flex flex-1 overflow-hidden">
-        <aside className="w-64 lg:w-80 bg-gray-950 p-4 space-y-6 overflow-y-auto custom-scrollbar border-r border-gray-800 shadow-2xl z-20">
-          <FileUpload onFileUpload={processUploadedDeck} disabled={isLoading} />
-          
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-gray-800 pb-2">Deck Actions</h3>
-            <div className="grid grid-cols-1 gap-2">
-                <button 
-                    onClick={() => {
-                      setShowRightSidebar(true);
-                      setRightPanelTab('split');
-                    }} 
-                    className="flex items-center justify-center gap-2 w-full py-2.5 bg-gradient-to-br from-cyan-700 to-blue-800 hover:from-cyan-600 hover:to-blue-700 rounded-md text-xs font-bold shadow-lg transition-all active:scale-95 text-white"
-                >
-                    <SparklesIcon className="w-4 h-4 text-cyan-300" /> MTG Arena Cards ({mtgaCards.length})
-                </button>
-                <button 
-                    onClick={handleDrawHand} 
-                    disabled={processedDeckCards.length === 0}
-                    className="flex items-center justify-center gap-2 w-full py-2.5 bg-gradient-to-br from-cyan-600 to-blue-700 hover:from-cyan-500 hover:to-blue-600 rounded-md text-xs font-bold shadow-lg transition-all active:scale-95 disabled:opacity-30"
-                >
-                    <HandIcon className="w-4 h-4" /> Draw Sample Hand
-                </button>
-                <button 
-                    onClick={() => setShowCommanderSelectionModal(true)} 
-                    disabled={processedDeckCards.length === 0}
-                    className="flex items-center justify-center gap-2 w-full py-2.5 bg-gradient-to-br from-amber-600 to-yellow-700 hover:from-amber-500 hover:to-yellow-600 rounded-md text-xs font-bold shadow-lg transition-all active:scale-95 disabled:opacity-30"
-                >
-                    <CrownIcon className="w-4 h-4" /> Set Commander
-                </button>
-                <button 
-                    onClick={() => setShowDeckAnalysisModal(true)} 
-                    disabled={processedDeckCards.length === 0 || !aiClient}
-                    className="flex items-center justify-center gap-2 w-full py-2.5 bg-gradient-to-br from-purple-600 to-indigo-700 hover:from-purple-500 hover:to-indigo-600 rounded-md text-xs font-bold shadow-lg transition-all active:scale-95 disabled:opacity-30"
-                >
-                    <SparklesIcon className="w-4 h-4" /> {aiClient?.type === 'local' ? 'Analyze Deck (Local)' : 'Ask Gemini about Deck'}
-                </button>
-            </div>
           </div>
+        </header>
 
-          <KeywordManager keywordStyles={keywordStyles} onKeywordStylesChange={setKeywordStyles} />
-          
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-gray-800 pb-2">Search & Filter</h3>
-            <div className="flex items-center gap-2">
+        <div className="flex flex-1 overflow-hidden">
+          <aside className="w-64 lg:w-72 bg-[#0c0c0e] p-3.5 space-y-5 overflow-y-auto custom-scrollbar border-r border-zinc-800/80 shadow-2xl z-20">
+            <FileUpload
+              onFileUpload={processUploadedDeck}
+              onLoadSampleDeck={handleLoadSampleDeck}
+              disabled={isLoading}
+            />
+            
+            <div className="space-y-2">
+              <h3 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest border-b border-zinc-800/80 pb-1.5">
+                Workbench &amp; Simulation
+              </h3>
+
+              {/* Primary Hero CTA: AI Deck Intelligence */}
+              <button 
+                onClick={() => setShowDeckAnalysisModal(true)} 
+                disabled={processedDeckCards.length === 0}
+                className="flex items-center justify-center gap-2 w-full py-2.5 px-3 bg-gradient-to-r from-amber-500/20 via-amber-500/15 to-amber-600/20 hover:from-amber-500/30 hover:to-amber-600/30 border border-amber-500/40 rounded-lg text-xs font-semibold text-amber-200 shadow-sm transition-all active:scale-98 disabled:opacity-35"
+              >
+                <SparklesIcon className="w-4 h-4 text-amber-400 shrink-0" />
+                <span className="truncate">{aiClient ? `AI Deck Report (${aiBadgeText})` : 'AI Deck Report (Free Setup)'}</span>
+              </button>
+
+              {/* Secondary Tactical Tool Grid */}
+              <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                <button 
+                  onClick={handleDrawHand} 
+                  disabled={processedDeckCards.length === 0}
+                  className="flex items-center justify-center gap-1.5 py-2 px-2.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 rounded-md text-xs font-medium text-zinc-200 transition-all active:scale-95 disabled:opacity-35"
+                  title="Draw a random 7-card sample opening hand"
+                >
+                  <HandIcon className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                  <span>Sample Hand</span>
+                </button>
+                <button 
+                  onClick={() => setShowGoldfishSimulator(true)} 
+                  disabled={processedDeckCards.length === 0}
+                  className="flex items-center justify-center gap-1.5 py-2 px-2.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 rounded-md text-xs font-medium text-zinc-200 transition-all active:scale-95 disabled:opacity-35"
+                  title="Simulate Turns 1-6 opening play sequences"
+                >
+                  <SparklesIcon className="w-3.5 h-3.5 text-amber-400/80 shrink-0" />
+                  <span>Goldfish Sim</span>
+                </button>
+                <button 
+                  onClick={() => setShowCommanderSelectionModal(true)} 
+                  disabled={processedDeckCards.length === 0}
+                  className="flex items-center justify-center gap-1.5 py-2 px-2.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 rounded-md text-xs font-medium text-zinc-200 transition-all active:scale-95 disabled:opacity-35"
+                  title="Assign or change your deck's Commander"
+                >
+                  <CrownIcon className="w-3.5 h-3.5 text-amber-400/90 shrink-0" />
+                  <span>Commander</span>
+                </button>
+                <button 
+                  onClick={() => setShowExportDeckModal(true)} 
+                  disabled={processedDeckCards.length === 0}
+                  className="flex items-center justify-center gap-1.5 py-2 px-2.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 rounded-md text-xs font-medium text-zinc-200 transition-all active:scale-95 disabled:opacity-35"
+                  title="Export decklist to Arena / Moxfield / Text"
+                >
+                  <DownloadIcon className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                  <span>Export List</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest border-b border-zinc-800/80 pb-1.5">
+                Filter &amp; Edit Deck
+              </h3>
+              <div className="flex items-center gap-1.5">
                 <input
                   type="text"
-                  placeholder="Search keywords/text..."
+                  placeholder="Highlight card or oracle text..."
                   value={activeSearchTerm}
                   onChange={(e) => setActiveSearchTerm(e.target.value)}
-                  className="flex-grow bg-gray-900 border border-gray-800 rounded px-3 py-2 text-xs focus:ring-1 focus:ring-cyan-500 outline-none transition-all placeholder-gray-700"
+                  className="flex-grow bg-zinc-950 border border-zinc-800 rounded-md px-2.5 py-1.5 text-xs text-zinc-200 focus:border-amber-500/50 outline-none transition-all placeholder-zinc-600"
                 />
-                <button onClick={handlePinSearch} className="p-2 bg-gray-800 hover:bg-gray-700 rounded transition-colors border border-gray-700 shadow-md">
-                    <MapPinIcon className="w-4 h-4 text-cyan-400"/>
-                </button>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <button onClick={() => setShowAddCardModal(true)} className="w-full py-2.5 bg-gray-800 hover:bg-gray-700 rounded text-xs font-semibold border border-gray-700 shadow-md transition-all flex items-center justify-center gap-2">
-                <PlusIcon className="w-4 h-4 text-green-500" /> Add Card
-            </button>
-            <button onClick={handleUndo} disabled={historyIndex <= 0} className="w-full py-2.5 bg-gray-800 hover:bg-gray-700 rounded text-xs font-semibold border border-gray-700 shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-20">
-                <ArrowUturnLeftIcon className="w-4 h-4 text-amber-500" /> Undo Change
-            </button>
-          </div>
-
-          {processedDeckCards.length > 0 && <Legend keywordStyles={keywordStyles.filter(k => k.enabled)} highlightedKeywords={highlightedKeywords} />}
-        </aside>
-
-        <main
-          onDragOver={handleCanvasDragOver}
-          onDrop={handleCanvasDrop}
-          className="flex-1 flex flex-col overflow-hidden bg-black relative"
-        >
-          {activeTab === 'visualizer' ? (
-            <DeckVisualizer
-              cards={processedDeckCards}
-              keywordConfig={keywordStyles} 
-              onNodeSelectionChange={handleNodeSelectionChange}
-              onCardKeywordsUpdate={handleCardKeywordsUpdate}
-              allKeywordStyles={keywordStyles}
-              weaklyConnectedHighlightSet={weaklyConnectedHighlightSet}
-              selectedNodeForPopup={selectedNodeForPopup}
-              drawnSampleHand={drawnSampleHand}
-              onCloseSampleHand={() => setDrawnSampleHand(null)}
-              activeSearchCardIds={activeSearchCardIds}
-              pinnedSearches={pinnedSearches}
-              singleActiveSearchResultId={singleActiveSearchResultId}
-              onCardImageClick={handleShowLargeImage}
-              orphanClusters={orphanClusters}
-              onDeleteNode={(id) => setProcessedDeckCards(prev => prev.filter(c => c.id !== id))}
-              commanderId={commanderId}
-              selectedCardInListId={selectedCardInListId}
-              panToNodeId={panToNodeId}
-              onPanComplete={() => setPanToNodeId(null)}
-              aiClient={aiClient}
-              highlightedColors={highlightedColors}
-              onOpenSimulator={() => setShowGoldfishSimulator(true)}
-            />
-          ) : (
-            <div className="overflow-y-auto custom-scrollbar flex-grow p-4">
-               <ManaCurveDashboard deck={processedDeckCards} onShowCardsForSegment={handleShowCardsForManaCurveSegment} />
-            </div>
-          )}
-          {manaAnalysisData && activeTab === 'visualizer' && (
-            <ManaAnalysisDisplay 
-              analysisData={manaAnalysisData} 
-              onStatClick={handleManaStatClick} 
-              highlightedColors={highlightedColors}
-              onColorHighlightToggle={handleColorHighlightToggle}
-            />
-          )}
-          
-          {isLoading && (
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-50">
-                <LoadingSpinner />
-                <p className="mt-4 text-cyan-400 font-mono text-sm animate-pulse uppercase tracking-[0.2em]">{loadingDetailMessage || 'Processing Deck...'}</p>
-            </div>
-          )}
-        </main>
-
-        {showRightSidebar ? (
-          <aside className={`bg-gray-950 p-3 flex flex-col space-y-3 border-l border-gray-800 shadow-2xl z-20 transition-all duration-300 ${
-            rightPanelTab === 'deck' 
-              ? 'w-72 lg:w-80' 
-              : 'w-[440px] lg:w-[490px] xl:w-[540px]'
-          }`}>
-            {/* Right Sidebar Header / Tab Control */}
-            <div className="bg-gray-900/90 p-1.5 rounded-lg border border-gray-800 flex items-center justify-between shrink-0 shadow-md">
-              <div className="flex items-center gap-1 bg-gray-950 p-1 rounded-md border border-gray-800/80">
                 <button
-                  onClick={() => setRightPanelTab('deck')}
-                  className={`px-2.5 py-1 rounded text-xs font-bold transition-all flex items-center gap-1.5 ${
-                    rightPanelTab === 'deck'
-                      ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/30'
-                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
-                  }`}
-                  title="View Deck List"
+                  onClick={handlePinSearch}
+                  className="p-1.5 bg-zinc-900 hover:bg-zinc-800 rounded-md transition-colors border border-zinc-800 text-amber-400/90"
+                  title="Pin search highlight (up to 3 colors)"
                 >
-                  <span>📋 Deck</span>
-                  <span className="px-1.5 py-0.2 rounded-full bg-cyan-950 text-cyan-300 font-mono text-[10px] border border-cyan-800">
-                    {processedDeckCards.reduce((sum, c) => sum + c.quantity, 0)}
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => setRightPanelTab('collection')}
-                  className={`px-2.5 py-1 rounded text-xs font-bold transition-all flex items-center gap-1.5 ${
-                    rightPanelTab === 'collection'
-                      ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/30'
-                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
-                  }`}
-                  title="Browse MTG Arena Collection"
-                >
-                  <span>🎴 MTGA</span>
-                  <span className="px-1.5 py-0.2 rounded-full bg-cyan-950 text-cyan-300 font-mono text-[10px] border border-cyan-800">
-                    {mtgaCards.length}
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => setRightPanelTab('split')}
-                  className={`px-2.5 py-1 rounded text-xs font-bold transition-all flex items-center gap-1.5 ${
-                    rightPanelTab === 'split'
-                      ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md shadow-cyan-600/30'
-                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
-                  }`}
-                  title="Split View: Deck List on Top, MTGA Collection on Bottom"
-                >
-                  <span>📑 Split</span>
+                  <MapPinIcon className="w-4 h-4"/>
                 </button>
               </div>
 
-              <button
-                onClick={() => setShowRightSidebar(false)}
-                className="p-1.5 text-gray-400 hover:text-white rounded-md bg-gray-800 hover:bg-gray-700 transition-colors border border-gray-700"
-                title="Hide Right Panel"
-              >
-                <XMarkIcon className="w-4 h-4" />
-              </button>
+              <div className="grid grid-cols-2 gap-1.5 pt-1">
+                <button
+                  onClick={() => setShowAddCardModal(true)}
+                  className="py-1.5 px-2.5 bg-zinc-900 hover:bg-zinc-800 rounded-md text-xs font-medium text-zinc-300 border border-zinc-800 transition-all flex items-center justify-center gap-1.5"
+                >
+                  <PlusIcon className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Add Card</span>
+                </button>
+                <button
+                  onClick={handleUndo}
+                  disabled={historyIndex <= 0}
+                  className="py-1.5 px-2.5 bg-zinc-900 hover:bg-zinc-800 rounded-md text-xs font-medium text-zinc-300 border border-zinc-800 transition-all flex items-center justify-center gap-1.5 disabled:opacity-30"
+                >
+                  <ArrowUturnLeftIcon className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Undo</span>
+                </button>
+              </div>
             </div>
 
-            {/* Large 270px x 360px Hovered Card Image Preview Box */}
-            <div className="shrink-0 flex justify-center py-1">
-              <HoveredCardDisplay 
-                card={hoveredCardInList || (rightPanelTab === 'deck' || rightPanelTab === 'split' ? selectedCard : null)} 
-                deckCards={processedDeckCards}
+            <KeywordManager keywordStyles={keywordStyles} onKeywordStylesChange={setKeywordStyles} />
+
+            {processedDeckCards.length > 0 && (
+              <Legend keywordStyles={keywordStyles.filter(k => k.enabled)} highlightedKeywords={highlightedKeywords} />
+            )}
+          </aside>
+
+          <main
+            onDragOver={handleCanvasDragOver}
+            onDrop={handleCanvasDrop}
+            className="flex-1 flex flex-col overflow-hidden bg-[#09090b] relative"
+          >
+            {activeTab === 'visualizer' ? (
+              <DeckVisualizer
+                cards={processedDeckCards}
+                keywordConfig={keywordStyles} 
+                onNodeSelectionChange={handleNodeSelectionChange}
+                onCardKeywordsUpdate={handleCardKeywordsUpdate}
+                allKeywordStyles={keywordStyles}
+                weaklyConnectedHighlightSet={weaklyConnectedHighlightSet}
+                selectedNodeForPopup={selectedNodeForPopup}
+                drawnSampleHand={drawnSampleHand}
+                onCloseSampleHand={() => setDrawnSampleHand(null)}
+                activeSearchCardIds={activeSearchCardIds}
+                pinnedSearches={pinnedSearches}
+                singleActiveSearchResultId={singleActiveSearchResultId}
+                onCardImageClick={handleShowLargeImage}
+                orphanClusters={orphanClusters}
+                onDeleteNode={(id) => setProcessedDeckCards(prev => prev.filter(c => c.id !== id))}
+                commanderId={commanderId}
+                selectedCardInListId={selectedCardInListId}
+                panToNodeId={panToNodeId}
+                onPanComplete={() => setPanToNodeId(null)}
+                aiClient={aiClient}
+                highlightedColors={highlightedColors}
+                onOpenSimulator={() => setShowGoldfishSimulator(true)}
               />
-            </div>
-
-            {/* Deck List Only Tab */}
-            {rightPanelTab === 'deck' && (
-              <div className="flex-grow min-h-0 border-t border-gray-800/80 pt-2 flex flex-col">
-                <DeckListView
-                  cards={processedDeckCards}
-                  onCardHover={setHoveredCardInList}
-                  onCardLeave={() => setHoveredCardInList(null)}
-                  onCardSelect={(id) => {
-                      setSelectedCardInListId(id);
-                      setPanToNodeId(id);
-                  }}
-                  selectedCardId={selectedCardInListId}
-                  onCardDelete={(id) => setProcessedDeckCards(prev => prev.filter(c => c.id !== id))}
-                  commanderId={commanderId}
-                />
+            ) : (
+              <div className="overflow-y-auto custom-scrollbar flex-grow p-4">
+                 <ManaCurveDashboard deck={processedDeckCards} onShowCardsForSegment={handleShowCardsForManaCurveSegment} />
               </div>
             )}
+            {manaAnalysisData && activeTab === 'visualizer' && (
+              <ManaAnalysisDisplay 
+                analysisData={manaAnalysisData} 
+                onStatClick={handleManaStatClick} 
+                highlightedColors={highlightedColors}
+                onColorHighlightToggle={handleColorHighlightToggle}
+              />
+            )}
+            
+            {isLoading && (
+              <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center z-50">
+                  <LoadingSpinner />
+                  <p className="mt-4 text-amber-300 font-mono text-xs animate-pulse uppercase tracking-[0.2em]">{loadingDetailMessage || 'Processing Deck...'}</p>
+              </div>
+            )}
+          </main>
 
-            {/* Collection Only Tab */}
-            {rightPanelTab === 'collection' && (
-              <div className="flex-grow min-h-0 border-t border-gray-800/80 pt-1 flex flex-col overflow-hidden">
-                <MtgaCollectionDrawer
-                  isOpen={true}
-                  embedded={true}
-                  onClose={() => setRightPanelTab('deck')}
-                  cards={mtgaCards}
-                  isLoading={isMtgaLoading}
-                  error={mtgaError}
-                  onRefresh={loadMtgaCollectionData}
-                  onAddCardToDeck={handleAddCardToVisualizer}
-                  commanderCard={processedDeckCards.find(c => c.id === commanderId) || null}
+          {showRightSidebar ? (
+            <aside className={`bg-[#0c0c0e] p-3 flex flex-col space-y-3 border-l border-zinc-800/80 shadow-2xl z-20 transition-all duration-300 ${
+              rightPanelTab === 'deck' 
+                ? 'w-72 lg:w-80' 
+                : 'w-[440px] lg:w-[490px] xl:w-[540px]'
+            }`}>
+              {/* Right Sidebar Header / Tab Control */}
+              <div className="bg-zinc-900/80 p-1 rounded-lg border border-zinc-800/90 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setRightPanelTab('deck')}
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
+                      rightPanelTab === 'deck'
+                        ? 'bg-zinc-800 text-amber-300 border border-amber-500/30 shadow-sm'
+                        : 'text-zinc-400 hover:text-zinc-200 border border-transparent'
+                    }`}
+                    title="View Deck List"
+                  >
+                    <span>Decklist</span>
+                    <span className="px-1.5 py-0.2 rounded bg-zinc-950 text-zinc-300 font-mono text-[10px] border border-zinc-800">
+                      {processedDeckCards.reduce((sum, c) => sum + c.quantity, 0)}
+                    </span>
+                  </button>
+
+                  {mtgaCards.length > 0 && (
+                    <>
+                      <button
+                        onClick={() => setRightPanelTab('collection')}
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
+                          rightPanelTab === 'collection'
+                            ? 'bg-zinc-800 text-amber-300 border border-amber-500/30 shadow-sm'
+                            : 'text-zinc-400 hover:text-zinc-200 border border-transparent'
+                        }`}
+                        title="Browse MTG Arena Collection"
+                      >
+                        <span>Arena</span>
+                        <span className="px-1.5 py-0.2 rounded bg-zinc-950 text-zinc-400 font-mono text-[10px] border border-zinc-800">
+                          {mtgaCards.length.toLocaleString()}
+                        </span>
+                      </button>
+
+                      <button
+                        onClick={() => setRightPanelTab('split')}
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
+                          rightPanelTab === 'split'
+                            ? 'bg-zinc-800 text-amber-300 border border-amber-500/30 shadow-sm'
+                            : 'text-zinc-400 hover:text-zinc-200 border border-transparent'
+                        }`}
+                        title="Split View: Deck List on Top, MTGA Collection on Bottom"
+                      >
+                        <span>Split</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => setShowRightSidebar(false)}
+                  className="p-1 text-zinc-500 hover:text-zinc-200 rounded-md hover:bg-zinc-800 transition-colors"
+                  title="Hide Inspector Panel"
+                >
+                  <XMarkIcon className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Hovered Card Image Preview Box */}
+              <div className="shrink-0 flex justify-center py-0.5">
+                <HoveredCardDisplay 
+                  card={hoveredCardInList || (rightPanelTab === 'deck' || rightPanelTab === 'split' ? selectedCard : null)} 
                   deckCards={processedDeckCards}
-                  onCardHover={(card) => {
-                    if (card) {
-                      setHoveredCardInList({
-                        id: normalizeCardName(card.title),
-                        name: card.title,
-                        quantity: card.quantity,
-                        keywords: [card.primaryType.toLowerCase()],
-                        text: card.typeText,
-                        imageUrl: card.imageUrl,
-                        manaCostString: card.manaCost,
-                        typeLine: card.typeText,
-                        colors: card.colors
-                      });
-                    } else {
-                      setHoveredCardInList(null);
-                    }
-                  }}
                 />
               </div>
-            )}
 
-            {/* Split View Tab */}
-            {rightPanelTab === 'split' && (
-              <div className="flex-grow min-h-0 flex flex-col space-y-2 divide-y divide-gray-800/80 overflow-hidden">
-                {/* Top Half: Deck List */}
-                <div className="h-[42%] min-h-[160px] flex flex-col pt-1 overflow-hidden">
+              {/* Deck List Only Tab */}
+              {rightPanelTab === 'deck' && (
+                <div className="flex-grow min-h-0 border-t border-zinc-800/80 pt-2.5 flex flex-col">
                   <DeckListView
                     cards={processedDeckCards}
                     onCardHover={setHoveredCardInList}
@@ -971,9 +1101,11 @@ const App: React.FC = () => {
                     commanderId={commanderId}
                   />
                 </div>
+              )}
 
-                {/* Bottom Half: Collection Browser */}
-                <div className="h-[58%] min-h-[220px] flex flex-col pt-2 overflow-hidden">
+              {/* Collection Only Tab */}
+              {rightPanelTab === 'collection' && (
+                <div className="flex-grow min-h-0 border-t border-zinc-800/80 pt-1 flex flex-col overflow-hidden">
                   <MtgaCollectionDrawer
                     isOpen={true}
                     embedded={true}
@@ -1004,24 +1136,85 @@ const App: React.FC = () => {
                     }}
                   />
                 </div>
-              </div>
-            )}
-          </aside>
-        ) : (
-          <button
-            onClick={() => {
-              setShowRightSidebar(true);
-              setRightPanelTab('split');
-            }}
-            className={`fixed right-3 z-30 p-2.5 bg-gray-900/90 hover:bg-gray-800 text-cyan-400 hover:text-white rounded-lg border border-cyan-700/60 shadow-xl backdrop-blur-md flex items-center gap-2 text-xs font-bold transition-all active:scale-95 ${
-              drawnSampleHand ? 'top-28' : 'top-16'
-            }`}
-            title="Open Right Panel (Deck & Collection)"
-          >
-            <span>📋 Open Deck & Collection Panel</span>
-          </button>
-        )}
+              )}
+
+              {/* Split View Tab */}
+              {rightPanelTab === 'split' && (
+                <div className="flex-grow min-h-0 flex flex-col space-y-2 divide-y divide-zinc-800/80 overflow-hidden">
+                  {/* Top Half: Deck List */}
+                  <div className="h-[42%] min-h-[160px] flex flex-col pt-1 overflow-hidden">
+                    <DeckListView
+                      cards={processedDeckCards}
+                      onCardHover={setHoveredCardInList}
+                      onCardLeave={() => setHoveredCardInList(null)}
+                      onCardSelect={(id) => {
+                          setSelectedCardInListId(id);
+                          setPanToNodeId(id);
+                      }}
+                      selectedCardId={selectedCardInListId}
+                      onCardDelete={(id) => setProcessedDeckCards(prev => prev.filter(c => c.id !== id))}
+                      commanderId={commanderId}
+                    />
+                  </div>
+
+                  {/* Bottom Half: Collection Browser */}
+                  <div className="h-[58%] min-h-[220px] flex flex-col pt-2 overflow-hidden">
+                    <MtgaCollectionDrawer
+                      isOpen={true}
+                      embedded={true}
+                      onClose={() => setRightPanelTab('deck')}
+                      cards={mtgaCards}
+                      isLoading={isMtgaLoading}
+                      error={mtgaError}
+                      onRefresh={loadMtgaCollectionData}
+                      onAddCardToDeck={handleAddCardToVisualizer}
+                      commanderCard={processedDeckCards.find(c => c.id === commanderId) || null}
+                      deckCards={processedDeckCards}
+                      onCardHover={(card) => {
+                        if (card) {
+                          setHoveredCardInList({
+                            id: normalizeCardName(card.title),
+                            name: card.title,
+                            quantity: card.quantity,
+                            keywords: [card.primaryType.toLowerCase()],
+                            text: card.typeText,
+                            imageUrl: card.imageUrl,
+                            manaCostString: card.manaCost,
+                            typeLine: card.typeText,
+                            colors: card.colors
+                          });
+                        } else {
+                          setHoveredCardInList(null);
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </aside>
+          ) : (
+            <button
+              onClick={() => {
+                setShowRightSidebar(true);
+                setRightPanelTab('deck');
+              }}
+              className={`fixed right-3 z-30 px-3 py-2 bg-zinc-900/90 hover:bg-zinc-800 text-zinc-200 hover:text-amber-200 rounded-lg border border-zinc-700/80 shadow-xl backdrop-blur-md flex items-center gap-2 text-xs font-medium transition-all active:scale-95 ${
+                drawnSampleHand ? 'top-28' : 'top-16'
+              }`}
+              title="Open Right Inspector Panel"
+            >
+              <span>Inspector Panel</span>
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Single Respectful Below-the-Fold Banner & Indie Supporter Bar */}
+      <FooterBanner
+        commanderCard={processedDeckCards.find(c => c.id === commanderId) || null}
+        deckCount={processedDeckCards.length}
+        onOpenAiSetup={() => setShowApiKeyModal(true)}
+      />
 
       {/* Modals */}
       <CommanderSelectionModal
@@ -1039,13 +1232,10 @@ const App: React.FC = () => {
       <ApiKeyModal
         isOpen={showApiKeyModal}
         onClose={() => setShowApiKeyModal(false)}
-        onSave={(key, model, provider, endpoint) => {
-          localStorage.setItem('GEMINI_API_KEY', key);
-          if (provider) localStorage.setItem('AI_PROVIDER', provider);
-          if (endpoint) localStorage.setItem('OLLAMA_ENDPOINT', endpoint);
-          window.location.reload();
+        onSave={() => {
+          initializeAI();
+          setShowApiKeyModal(false);
         }}
-        currentProvider={aiClient?.type || 'gemini'}
       />
 
       <DeckAnalysisModal
@@ -1053,7 +1243,15 @@ const App: React.FC = () => {
         onClose={() => setShowDeckAnalysisModal(false)}
         deck={processedDeckCards}
         aiClient={aiClient}
-        onApplySuggestions={handleApplyDeckChanges}
+        commanderId={commanderId}
+        onOpenAiSetup={() => setShowApiKeyModal(true)}
+      />
+
+      <ExportDeckModal
+        isOpen={showExportDeckModal}
+        onClose={() => setShowExportDeckModal(false)}
+        deck={processedDeckCards}
+        commanderId={commanderId}
       />
 
       <GoldfishSimulatorModal

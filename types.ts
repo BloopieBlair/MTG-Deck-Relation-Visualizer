@@ -128,8 +128,10 @@ export interface SimulationNode {
 }
 
 export interface AiClient {
-  type: 'gemini' | 'local';
+  type: 'openrouter' | 'gemini' | 'local';
   geminiClient?: any;
+  openRouterKey?: string;
+  openRouterModel?: string;
   localHost?: string;
   localModel?: string;
 }
