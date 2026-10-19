@@ -884,7 +884,12 @@ const App: React.FC = () => {
                   <span>Sample Hand</span>
                 </button>
                 <button 
-                  onClick={() => setShowGoldfishSimulator(true)} 
+                  onClick={() => {
+                    if (!drawnSampleHand || drawnSampleHand.length === 0) {
+                      handleDrawHand();
+                    }
+                    setShowGoldfishSimulator(true);
+                  }} 
                   disabled={processedDeckCards.length === 0}
                   className="flex items-center justify-center gap-1.5 py-2 px-2.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 rounded-md text-xs font-medium text-zinc-200 transition-all active:scale-95 disabled:opacity-35"
                   title="Simulate Turns 1-6 opening play sequences"

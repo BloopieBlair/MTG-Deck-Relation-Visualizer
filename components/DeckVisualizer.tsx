@@ -419,7 +419,7 @@ export const DeckVisualizer = ({
              .style("pointer-events", "none");
           });
         }
-        g.select<SVGTextElement>(".node-label").attr("y", baseR + 8).text(d.name.length > 15 ? d.name.substring(0,12) + "..." : d.name).attr("fill", "#bae6fd");
+        g.select<SVGTextElement>(".node-label").attr("y", baseR + 8).text(d.name.length > 15 ? d.name.substring(0,12) + "..." : d.name).attr("fill", "#d4d4d8");
 
         if (isEldraziCard) {
             const starSize = baseR * 0.7;
