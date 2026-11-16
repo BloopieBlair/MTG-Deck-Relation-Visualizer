@@ -68,7 +68,9 @@ interface DeckVisualizerProps {
   onPanComplete: () => void;
   aiClient?: AiClient | null;
   highlightedColors: Set<string>;
-  onOpenSimulator?: () => void;
+  onOpenSimulator?: (initialUniverseId?: string) => void;
+  onRedrawRandomHand?: () => void;
+  onLoadSpotlightHand?: () => void;
 }
 
 const BASE_CHARGE_STRENGTH = -270; 
@@ -198,7 +200,9 @@ export const DeckVisualizer = ({
     onPanComplete,
     aiClient,
     highlightedColors,
-    onOpenSimulator
+    onOpenSimulator,
+    onRedrawRandomHand,
+    onLoadSpotlightHand
 }: DeckVisualizerProps): React.ReactElement | null => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const svgContainerRef = useRef<HTMLDivElement | null>(null);
@@ -703,18 +707,40 @@ export const DeckVisualizer = ({
     <div className="w-full h-full canvas-dot-grid overflow-hidden relative flex flex-col text-sm" style={{ overscrollBehavior: 'none' }} >
         {drawnSampleHand && (
             <div className="relative bg-zinc-900/95 p-2.5 border-b border-amber-500/40 shadow-xl flex-shrink-0 backdrop-blur-md">
-                <div className="absolute top-2.5 right-2.5 flex gap-2 z-10">
-                    {onOpenSimulator && (
-                        <button 
-                            onClick={onOpenSimulator}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 rounded-md shadow text-xs font-semibold transition-all active:scale-95"
-                        >
-                            <SparklesIcon className="w-3.5 h-3.5 text-amber-400" /> Simulate Hand (T1–T6)
-                        </button>
-                    )}
-                    <button onClick={onCloseSampleHand} className="p-1.5 bg-zinc-800 hover:bg-rose-950/80 border border-zinc-700 hover:border-rose-500/50 text-zinc-300 hover:text-rose-200 rounded-md transition-colors"><XMarkIcon className="w-5 h-5" /></button>
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <h4 className="text-[11px] font-semibold uppercase tracking-widest text-amber-400/90">
+                        Opening Hand Preview ({drawnSampleHand.length} Cards)
+                    </h4>
+                    <div className="flex flex-wrap items-center gap-1.5 z-10">
+                        {onOpenSimulator && (
+                            <button 
+                                onClick={() => onOpenSimulator()}
+                                className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 rounded-md shadow text-xs font-semibold transition-all active:scale-95"
+                            >
+                                <SparklesIcon className="w-3.5 h-3.5 text-amber-400" /> Simulate Hand / Parallel Turns
+                            </button>
+                        )}
+                        {onLoadSpotlightHand && (
+                            <button
+                                onClick={onLoadSpotlightHand}
+                                className="px-2.5 py-1 bg-zinc-800 hover:bg-amber-950/60 border border-zinc-700 hover:border-amber-500/50 text-amber-200 rounded-md text-xs font-medium transition-all active:scale-95"
+                                title="Load the curated Strike It Rich Turn 2 Commander spotlight hand"
+                            >
+                                ⚡ Spotlight Hand
+                            </button>
+                        )}
+                        {onRedrawRandomHand && (
+                            <button
+                                onClick={onRedrawRandomHand}
+                                className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 rounded-md text-xs font-medium transition-all active:scale-95"
+                                title="Draw a new random 7-card opening hand"
+                            >
+                                🎲 Random 7
+                            </button>
+                        )}
+                        <button onClick={onCloseSampleHand} className="p-1 bg-zinc-800 hover:bg-rose-950/80 border border-zinc-700 hover:border-rose-500/50 text-zinc-300 hover:text-rose-200 rounded-md transition-colors"><XMarkIcon className="w-4 h-4" /></button>
+                    </div>
                 </div>
-                <h4 className="text-[11px] font-semibold uppercase tracking-widest text-amber-400/90 mb-2 text-center">Opening Hand Preview (7 Cards)</h4>
                 <div className="flex justify-center items-center space-x-2 overflow-x-auto pb-1 custom-scrollbar">
                     {drawnSampleHand.map((card, idx) => (
                         <div key={idx} className="flex-shrink-0 w-[11.5rem] h-[16rem] rounded-md overflow-hidden border border-zinc-700 shadow-lg hover:border-amber-400/60 transition-all cursor-pointer" onClick={() => onCardImageClick(card)} onMouseEnter={() => setHoveredHandCardId(card.id)} onMouseLeave={() => setHoveredHandCardId(null)}>

@@ -9,6 +9,7 @@ import { Legend } from './components/Legend';
 import { LoadingSpinner } from './components/LoadingSpinner';
 import { ManaAnalysisDisplay } from './components/ManaAnalysisDisplay';
 import { ManaCurveDashboard, type ManaCurveModalRequest } from './components/ManaCurveDashboard';
+import { ColorPieMap, type DeckHistorySnapshot } from './components/ColorPieMap';
 import { ManaCurveCardListModal } from './components/ManaCurveCardListModal';
 import { LargeCardImageModal } from './components/LargeCardImageModal';
 import { ZoomControl } from './components/ZoomControl';
@@ -26,6 +27,8 @@ import { fetchMtgaCollection } from './services/mtgaLogService';
 import { PINNED_SEARCH_COLORS, ACTIVE_SEARCH_HIGHLIGHT_COLOR, SINGLE_SEARCH_RESULT_HIGHLIGHT_COLOR, DEFAULT_KEYWORD_STYLES, MOCK_CARD_DATABASE, SAMPLE_DECK_ANIM_PAKAL, SAMPLE_DECK_SLIVERS } from './constants';
 import { parseCsvContent } from './services/csvParser';
 import { fetchCardDataFromScryfall, fetchCardsBatch, parseScryfallManaCost, normalizeCardName } from './services/scryfallService';
+import { diffDeckSnapshots } from './services/colorPieService';
+import { getExampleSpotlightHand } from './services/goldfishSimulator';
 import { parseDecklistWithGemini, fetchCardKeywordsWithGemini, exchangeOpenRouterCodeForKey, DEFAULT_OPENROUTER_MODEL } from './services/geminiService';
 import type { RawDeckCard, ProcessedDeckCard, KeywordStyle, ManaAnalysisData, ParsedManaCost, ManaSymbol, ManaColor, D3Node, PinnedSearch, OrphanClusterInfo, AiClient, MtgaCardItem } from './types';
 import { v4 as uuidv4 } from 'uuid';
@@ -57,12 +60,30 @@ function shuffleArray<T>(array: T[]): T[] {
 const MAX_PINNED_SEARCHES = 3;
 const MAX_HISTORY_SIZE = 20;
 
+const isLegendaryCommanderCandidate = (card: ProcessedDeckCard): boolean => {
+  const tl = (card.typeLine || '').toLowerCase();
+  const kws = (card.keywords || []).map(k => k.toLowerCase());
+  const isLegendary = tl.includes('legendary') || kws.includes('legendary');
+  const isCreatureOrPw =
+    tl.includes('creature') ||
+    tl.includes('planeswalker') ||
+    kws.includes('creature') ||
+    kws.includes('planeswalker');
+  return isLegendary && isCreatureOrPw;
+};
+
+const WORKSPACE_TABS: ReadonlyArray<{ id: 'visualizer' | 'manaCurve' | 'colorPie'; label: string }> = [
+  { id: 'visualizer', label: 'Synergy Graph' },
+  { id: 'manaCurve', label: 'Mana & Odds' },
+  { id: 'colorPie', label: 'Color Pie Map' },
+];
+
 const App: React.FC = () => {
   const [processedDeckCards, setProcessedDeckCards] = useState<ProcessedDeckCard[]>([]);
   const [keywordStyles, setKeywordStyles] = useState<KeywordStyle[]>(DEFAULT_KEYWORD_STYLES);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'manaCurve'>('visualizer');
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'manaCurve' | 'colorPie'>('visualizer');
 
   const [highlightedKeywords, setHighlightedKeywords] = useState<string[] | null>(null);
   const [manaAnalysisData, setManaAnalysisData] = useState<ManaAnalysisData | null>(null);
@@ -99,14 +120,19 @@ const App: React.FC = () => {
 
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [history, setHistory] = useState<ProcessedDeckCard[][]>([[]]);
+  const [historyMeta, setHistoryMeta] = useState<Array<{ timestamp: number; label?: string }>>(() => [
+    { timestamp: Date.now() },
+  ]);
   const [historyIndex, setHistoryIndex] = useState<number>(0);
-  const [isUndoRedoAction, setIsUndoRedoAction] = useState<boolean>(false); 
+  const [isUndoRedoAction, setIsUndoRedoAction] = useState<boolean>(false);
+  const pendingSnapshotLabelRef = useRef<string | undefined>(undefined);
 
   const [showAddCardModal, setShowAddCardModal] = useState<boolean>(false);
 
   const [commanderId, setCommanderId] = useState<string | null>(null);
   const [showCommanderSelectionModal, setShowCommanderSelectionModal] = useState<boolean>(false);
   const [showGoldfishSimulator, setShowGoldfishSimulator] = useState<boolean>(false);
+  const [simulatorInitialUniverseId, setSimulatorInitialUniverseId] = useState<string | null>(null);
   
   const [showMtgaDrawer, setShowMtgaDrawer] = useState<boolean>(false);
   const [rightPanelTab, setRightPanelTab] = useState<'deck' | 'collection' | 'split'>('deck');
@@ -309,18 +335,27 @@ const App: React.FC = () => {
   }, [processedDeckCards, keywordStyles, commanderId]);
 
   const updateHistory = useCallback((newCardsSnapshot: ProcessedDeckCard[]) => {
-    const newHistoryEntry = [...newCardsSnapshot]; 
+    const newHistoryEntry = [...newCardsSnapshot];
+    const nextLabel = pendingSnapshotLabelRef.current;
+    pendingSnapshotLabelRef.current = undefined;
+    const newMetaEntry = { timestamp: Date.now(), label: nextLabel };
+
     const currentHistoryStack = history.slice(0, historyIndex + 1);
+    const currentMetaStack = historyMeta.slice(0, historyIndex + 1);
     const newHistoryStack = [...currentHistoryStack, newHistoryEntry];
+    const newMetaStack = [...currentMetaStack, newMetaEntry];
 
     if (newHistoryStack.length > MAX_HISTORY_SIZE) {
-        setHistory(newHistoryStack.slice(newHistoryStack.length - MAX_HISTORY_SIZE));
+        const overflow = newHistoryStack.length - MAX_HISTORY_SIZE;
+        setHistory(newHistoryStack.slice(overflow));
+        setHistoryMeta(newMetaStack.slice(overflow));
         setHistoryIndex(MAX_HISTORY_SIZE - 1);
     } else {
         setHistory(newHistoryStack);
+        setHistoryMeta(newMetaStack);
         setHistoryIndex(newHistoryStack.length - 1);
     }
-  }, [history, historyIndex]);
+  }, [history, historyMeta, historyIndex]);
 
   useEffect(() => {
     if (!isUndoRedoAction) {
@@ -332,6 +367,65 @@ const App: React.FC = () => {
       setIsUndoRedoAction(false);
     }
   }, [processedDeckCards, updateHistory, isUndoRedoAction, history, historyIndex]);
+
+  const mappedDeckSnapshots = useMemo(() => {
+    const mapped: Array<{ historyIndex: number; snapshot: DeckHistorySnapshot }> = [];
+    let prevCards: ProcessedDeckCard[] | null = null;
+
+    for (let i = 0; i < history.length; i++) {
+      const cards = history[i];
+      const hasNonZeroCards = cards.some(c => (Number(c.quantity) || 0) > 0);
+      // Skip initial empty [] state(s) so trajectory starts cleanly at the loaded deck
+      if (!prevCards && !hasNonZeroCards) {
+        continue;
+      }
+      // Skip consecutive snapshots with no card quantity or colored pip changes (e.g. keyword-only edits)
+      if (prevCards !== null && diffDeckSnapshots(prevCards, cards).length === 0) {
+        continue;
+      }
+
+      const meta = historyMeta[i];
+      mapped.push({
+        historyIndex: i,
+        snapshot: {
+          cards,
+          timestamp: meta?.timestamp,
+          label: meta?.label,
+        },
+      });
+      prevCards = cards;
+    }
+
+    return mapped;
+  }, [history, historyMeta]);
+
+  const deckSnapshots = useMemo(
+    () => mappedDeckSnapshots.map(item => item.snapshot),
+    [mappedDeckSnapshots]
+  );
+
+  const activeColorPieSnapshotIndex = useMemo(() => {
+    if (mappedDeckSnapshots.length === 0) return undefined;
+    let activeIdx = 0;
+    for (let i = 0; i < mappedDeckSnapshots.length; i++) {
+      if (mappedDeckSnapshots[i].historyIndex <= historyIndex) {
+        activeIdx = i;
+      } else {
+        break;
+      }
+    }
+    return activeIdx;
+  }, [mappedDeckSnapshots, historyIndex]);
+
+  const handleSelectColorPieSnapshot = useCallback((snapshotIdx: number) => {
+    const target = mappedDeckSnapshots[snapshotIdx];
+    if (!target || target.historyIndex === historyIndex) return;
+    const targetCards = history[target.historyIndex];
+    if (!targetCards) return;
+    setIsUndoRedoAction(true);
+    setHistoryIndex(target.historyIndex);
+    setProcessedDeckCards(targetCards);
+  }, [mappedDeckSnapshots, history, historyIndex]);
 
   const initializeAI = useCallback(() => {
     const mode = localStorage.getItem('ai_mode') || 'openrouter';
@@ -575,17 +669,31 @@ const App: React.FC = () => {
       }
 
       const newProcessedCards = await fetchCardDataAndProcess(parsedCards, setLoadingDetailMessage);
+      const isAnimPakalSample = pendingSnapshotLabelRef.current === 'Sample: Anim Pakal';
+      if (!pendingSnapshotLabelRef.current) {
+        pendingSnapshotLabelRef.current = `Loaded ${file.name}`;
+      }
       setProcessedDeckCards(newProcessedCards);
 
       // Auto-select Commander if the first card in the list is a legendary creature/planeswalker
+      let detectedCommander: ProcessedDeckCard | null = null;
       if (newProcessedCards.length > 0) {
         const firstCard = newProcessedCards[0];
-        const tl = (firstCard.typeLine || '').toLowerCase();
-        if (tl.includes('legendary') && (tl.includes('creature') || tl.includes('planeswalker'))) {
+        if (isLegendaryCommanderCandidate(firstCard)) {
           setCommanderId(firstCard.id);
+          detectedCommander = firstCard;
+        } else {
+          detectedCommander = newProcessedCards.find(isLegendaryCommanderCandidate) || null;
         }
       }
+
+      if (isAnimPakalSample && newProcessedCards.length > 0) {
+        setDrawnSampleHand(getExampleSpotlightHand(newProcessedCards, detectedCommander));
+      } else {
+        setDrawnSampleHand(null);
+      }
     } catch (e: any) {
+      pendingSnapshotLabelRef.current = undefined;
       setError(`Failed to process deck: ${e.message}`);
     } finally {
       setIsLoading(false);
@@ -595,8 +703,13 @@ const App: React.FC = () => {
   const handleLoadSampleDeck = useCallback((sampleType: 'animPakal' | 'slivers') => {
     const sampleText = sampleType === 'animPakal' ? SAMPLE_DECK_ANIM_PAKAL : SAMPLE_DECK_SLIVERS;
     const sampleFile = new File([sampleText], `${sampleType}.txt`, { type: 'text/plain' });
+    pendingSnapshotLabelRef.current = sampleType === 'animPakal' ? 'Sample: Anim Pakal' : 'Sample: Slivers';
     processUploadedDeck(sampleText, sampleFile);
   }, [processUploadedDeck]);
+
+  const handleLoadAnimPakalSample = useCallback(() => {
+    handleLoadSampleDeck('animPakal');
+  }, [handleLoadSampleDeck]);
 
   const handleDrawHand = useCallback(() => {
     if (processedDeckCards.length === 0) return;
@@ -607,6 +720,20 @@ const App: React.FC = () => {
     const shuffled = shuffleArray(flatDeck);
     setDrawnSampleHand(shuffled.slice(0, 7));
   }, [processedDeckCards]);
+
+  const findCommanderCard = useMemo(() => {
+    if (commanderId) {
+      const found = processedDeckCards.find(c => c.id === commanderId);
+      if (found) return found;
+    }
+    return processedDeckCards.find(isLegendaryCommanderCandidate) || null;
+  }, [processedDeckCards, commanderId]);
+
+  const handleLoadSpotlightHand = useCallback(() => {
+    if (processedDeckCards.length === 0) return;
+    const hand = getExampleSpotlightHand(processedDeckCards, findCommanderCard);
+    setDrawnSampleHand(hand);
+  }, [processedDeckCards, findCommanderCard]);
 
   const handleNodeSelectionChange = useCallback((node: D3Node | null, keywords: string[] | null) => {
     setSelectedNodeForPopup(node);
@@ -774,26 +901,19 @@ const App: React.FC = () => {
             <div className="h-5 w-px bg-zinc-800 hidden md:block" />
 
             <div className="hidden md:flex bg-zinc-900/90 p-0.5 rounded-lg border border-zinc-800/90">
-              <button
-                onClick={() => setActiveTab('visualizer')}
-                className={`px-3.5 py-1 rounded-md transition-all font-medium text-xs ${
-                  activeTab === 'visualizer'
-                    ? 'bg-zinc-800 text-amber-300 border border-amber-500/30 shadow-sm'
-                    : 'text-zinc-400 hover:text-zinc-200 border border-transparent'
-                }`}
-              >
-                Synergy Graph
-              </button>
-              <button
-                onClick={() => setActiveTab('manaCurve')}
-                className={`px-3.5 py-1 rounded-md transition-all font-medium text-xs ${
-                  activeTab === 'manaCurve'
-                    ? 'bg-zinc-800 text-amber-300 border border-amber-500/30 shadow-sm'
-                    : 'text-zinc-400 hover:text-zinc-200 border border-transparent'
-                }`}
-              >
-                Mana &amp; Odds
-              </button>
+              {WORKSPACE_TABS.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-3.5 py-1 rounded-md transition-all font-medium text-xs ${
+                    activeTab === tab.id
+                      ? 'bg-zinc-800 text-amber-300 border border-amber-500/30 shadow-sm'
+                      : 'text-zinc-400 hover:text-zinc-200 border border-transparent'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -849,6 +969,22 @@ const App: React.FC = () => {
           </div>
         </header>
 
+        <div className="md:hidden bg-zinc-950/95 px-3 py-1.5 border-b border-zinc-800/80 flex items-center gap-1 overflow-x-auto">
+          {WORKSPACE_TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-3 py-1 rounded-md transition-all font-medium text-xs whitespace-nowrap ${
+                activeTab === tab.id
+                  ? 'bg-zinc-800 text-amber-300 border border-amber-500/30 shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200 border border-transparent'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
         <div className="flex flex-1 overflow-hidden">
           <aside className="w-64 lg:w-72 bg-[#0c0c0e] p-3.5 space-y-5 overflow-y-auto custom-scrollbar border-r border-zinc-800/80 shadow-2xl z-20">
             <FileUpload
@@ -886,8 +1022,9 @@ const App: React.FC = () => {
                 <button 
                   onClick={() => {
                     if (!drawnSampleHand || drawnSampleHand.length === 0) {
-                      handleDrawHand();
+                      handleLoadSpotlightHand();
                     }
+                    setSimulatorInitialUniverseId(null);
                     setShowGoldfishSimulator(true);
                   }} 
                   disabled={processedDeckCards.length === 0}
@@ -993,11 +1130,26 @@ const App: React.FC = () => {
                 onPanComplete={() => setPanToNodeId(null)}
                 aiClient={aiClient}
                 highlightedColors={highlightedColors}
-                onOpenSimulator={() => setShowGoldfishSimulator(true)}
+                onOpenSimulator={(universeId?: string) => {
+                  setSimulatorInitialUniverseId(universeId || null);
+                  setShowGoldfishSimulator(true);
+                }}
+                onRedrawRandomHand={handleDrawHand}
+                onLoadSpotlightHand={handleLoadSpotlightHand}
               />
-            ) : (
+            ) : activeTab === 'manaCurve' ? (
               <div className="overflow-y-auto custom-scrollbar flex-grow p-4">
                  <ManaCurveDashboard deck={processedDeckCards} onShowCardsForSegment={handleShowCardsForManaCurveSegment} />
+              </div>
+            ) : (
+              <div className="flex-1 min-h-0 h-full overflow-hidden">
+                <ColorPieMap
+                  currentDeck={processedDeckCards}
+                  snapshots={deckSnapshots}
+                  activeSnapshotIndex={activeColorPieSnapshotIndex}
+                  onSelectSnapshot={handleSelectColorPieSnapshot}
+                  onLoadSampleAnimPakal={handleLoadAnimPakalSample}
+                />
               </div>
             )}
             {manaAnalysisData && activeTab === 'visualizer' && (
@@ -1267,6 +1419,9 @@ const App: React.FC = () => {
         commanderId={commanderId}
         onSetCommander={(card) => setCommanderId(card.id)}
         onCardClick={handleShowLargeImage}
+        onUpdateSampleHand={setDrawnSampleHand}
+        onDrawRandomHand={handleDrawHand}
+        initialUniverseId={simulatorInitialUniverseId}
       />
 
       <LargeCardImageModal
