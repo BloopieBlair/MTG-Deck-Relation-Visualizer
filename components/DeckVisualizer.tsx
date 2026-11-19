@@ -23,7 +23,7 @@ import {
   zoomIdentity
 } from 'd3-zoom';
 import { polygonHull, polygonCentroid } from 'd3-polygon';
-import type { ProcessedDeckCard, KeywordStyle, D3Node, D3Link, PinnedSearch, OrphanClusterInfo, AiClient } from '../types';
+import type { ProcessedDeckCard, KeywordStyle, D3Node, D3Link, PinnedSearch, OrphanClusterInfo, AiClient, NodeColorMode } from '../types';
 import { CardInfoPopup } from './CardInfoPopup';
 import { XMarkIcon, CrownIcon, SparklesIcon } from './icons';
 import { 
@@ -71,6 +71,8 @@ interface DeckVisualizerProps {
   onOpenSimulator?: (initialUniverseId?: string) => void;
   onRedrawRandomHand?: () => void;
   onLoadSpotlightHand?: () => void;
+  nodeColorMode?: NodeColorMode;
+  onNodeColorModeChange?: (mode: NodeColorMode) => void;
 }
 
 const BASE_CHARGE_STRENGTH = -270; 
@@ -177,6 +179,196 @@ const getPathForWedge = (r: number, startAngleRad: number, endAngleRad: number):
   return `M 0 0 L ${x1.toFixed(3)} ${y1.toFixed(3)} A ${r} ${r} 0 0 1 ${x2.toFixed(3)} ${y2.toFixed(3)} Z`;
 };
 
+const isLandCard = (card: ProcessedDeckCard): boolean => {
+  if (card.typeLine) {
+    const frontFaceType = card.typeLine.split('//')[0].toLowerCase();
+    return frontFaceType.includes('land');
+  }
+  return (card.keywords || []).some(k => k.toLowerCase() === 'land') && !card.manaCostString;
+};
+
+const getCardCmc = (card: ProcessedDeckCard): number => {
+  if (typeof card.cmc === 'number' && !Number.isNaN(card.cmc)) {
+    return card.cmc;
+  }
+  if (card.parsedManaCost) {
+    let total = 0;
+    for (const [key, val] of Object.entries(card.parsedManaCost)) {
+      if (key !== 'X' && typeof val === 'number' && !Number.isNaN(val)) {
+        total += val;
+      }
+    }
+    return total;
+  }
+  if (card.manaCostString) {
+    const matches = card.manaCostString.match(/\{([^}]+)\}/g);
+    if (matches) {
+      return matches.reduce((sum, token) => {
+        const inner = token.replace(/[{}]/g, '').toUpperCase();
+        if (inner === 'X' || inner === 'Y' || inner === 'Z') return sum;
+        const num = parseInt(inner, 10);
+        return sum + (Number.isNaN(num) ? 1 : num);
+      }, 0);
+    }
+  }
+  return 0;
+};
+
+const getCmcHeatmapColor = (card: ProcessedDeckCard): string => {
+  if (isLandCard(card)) return '#52525b';
+  const cmc = getCardCmc(card);
+  if (cmc <= 1) return '#38bdf8';
+  if (cmc <= 2) return '#34d399';
+  if (cmc <= 3) return '#fbbf24';
+  if (cmc <= 4) return '#fb923c';
+  return '#f43f5e';
+};
+
+const getPriceHeatmapColor = (card: ProcessedDeckCard): string => {
+  const price = parseFloat(card.prices?.usd || '');
+  if (Number.isNaN(price)) return '#52525b';
+  if (price < 1) return '#64748b';
+  if (price < 5) return '#2dd4bf';
+  if (price < 20) return '#f59e0b';
+  return '#f43f5e';
+};
+
+const getSynergyHeatmapColor = (degree: number): string => {
+  if (degree === 0) return '#ef4444';
+  if (degree <= 2) return '#71717a';
+  if (degree <= 5) return '#38bdf8';
+  if (degree <= 9) return '#a78bfa';
+  return '#fbbf24';
+};
+
+const applyNodeFill = (
+  g: Selection<SVGGElement, unknown, null, undefined>,
+  d: D3Node,
+  mode: NodeColorMode,
+  degreeMap: Map<string, number>,
+  animate: boolean
+) => {
+  const baseR = NODE_RADIUS_BASE + Math.log2(Math.max(1, d.quantity)) * NODE_RADIUS_SCALE;
+  const baseCircle = g.select<SVGCircleElement>("circle.base-node-circle").attr("r", baseR);
+
+  g.selectAll("path.color-segment").remove();
+  g.selectAll("path.eldrazi-star").remove();
+
+  if (mode === 'color') {
+    let colors = getCardColors(d);
+    const isEldraziCard = colors.length === 0 && isEldrazi(d);
+
+    let fillVal = '#4b5563'; // default gray for colorless
+    if ((d.keywords || []).map(k => k.toLowerCase()).includes('land') && colors.length === 0) {
+      fillVal = '#374151'; // dark gray for colorless lands
+    }
+
+    if (colors.length <= 2) {
+      if (colors.length === 1) {
+        fillVal = MTG_COLOR_MAP[colors[0]] || '#4b5563';
+      } else if (colors.length === 2) {
+        fillVal = `url(#grad-${colors.join('-')})`;
+      }
+      baseCircle.style("display", null);
+      const currentFill = baseCircle.attr("fill");
+      if (animate && !fillVal.startsWith('url(') && currentFill && currentFill !== 'none' && !currentFill.startsWith('url(')) {
+        baseCircle.interrupt().transition().duration(250).attr("fill", fillVal);
+      } else {
+        baseCircle.interrupt().attr("fill", fillVal);
+      }
+    } else {
+      baseCircle.interrupt().attr("fill", "none");
+
+      if (colors.length > 4) {
+        colors = ['W', 'U', 'B', 'R', 'G'];
+      }
+
+      const numColors = colors.length;
+      colors.forEach((colCode, idx) => {
+        const color = MTG_COLOR_MAP[colCode] || '#6b7280';
+        const startAngle = idx * (2 * Math.PI / numColors) - Math.PI / 2;
+        const endAngle = (idx + 1) * (2 * Math.PI / numColors) - Math.PI / 2;
+        const pathD = getPathForWedge(baseR, startAngle, endAngle);
+
+        g.insert("path", "circle.base-node-circle")
+         .attr("class", "color-segment")
+         .attr("d", pathD)
+         .attr("fill", color)
+         .style("pointer-events", "none");
+      });
+    }
+
+    if (isEldraziCard) {
+      const starSize = baseR * 0.7;
+      g.append("path")
+       .attr("class", "eldrazi-star")
+       .attr("d", `M 0,${-starSize} Q 0,0 ${starSize},0 Q 0,0 0,${starSize} Q 0,0 ${-starSize},0 Q 0,0 0,${-starSize}`)
+       .attr("fill", "#cbd5e1")
+       .attr("stroke", "#1f2937")
+       .attr("stroke-width", 0.7)
+       .style("pointer-events", "none");
+    }
+    return;
+  }
+
+  let targetFill = '#52525b';
+  if (mode === 'cmc') {
+    targetFill = getCmcHeatmapColor(d);
+  } else if (mode === 'price') {
+    targetFill = getPriceHeatmapColor(d);
+  } else if (mode === 'synergy') {
+    targetFill = getSynergyHeatmapColor(degreeMap.get(d.id) ?? 0);
+  }
+
+  baseCircle.style("display", null);
+  const currentFill = baseCircle.attr("fill");
+  if (animate && currentFill && currentFill !== 'none' && !currentFill.startsWith('url(')) {
+    baseCircle.interrupt().transition().duration(250).attr("fill", targetFill);
+  } else {
+    baseCircle.interrupt().attr("fill", targetFill);
+  }
+};
+
+const NODE_COLOR_MODE_OPTIONS: { id: NodeColorMode; label: string }[] = [
+  { id: 'color', label: 'Colors' },
+  { id: 'cmc', label: 'CMC' },
+  { id: 'price', label: 'Price' },
+  { id: 'synergy', label: 'Synergy Hubs' },
+];
+
+const NODE_COLOR_LEGENDS: Record<NodeColorMode, { color: string; label: string }[]> = {
+  color: [
+    { color: '#fef3c7', label: 'W' },
+    { color: '#0ea5e9', label: 'U' },
+    { color: '#111827', label: 'B' },
+    { color: '#ef4444', label: 'R' },
+    { color: '#22c55e', label: 'G' },
+    { color: '#4b5563', label: 'C' },
+  ],
+  cmc: [
+    { color: '#52525b', label: 'Land' },
+    { color: '#38bdf8', label: '0-1' },
+    { color: '#34d399', label: '2' },
+    { color: '#fbbf24', label: '3' },
+    { color: '#fb923c', label: '4' },
+    { color: '#f43f5e', label: '5+' },
+  ],
+  price: [
+    { color: '#52525b', label: 'N/A' },
+    { color: '#64748b', label: '<$1' },
+    { color: '#2dd4bf', label: '$1-5' },
+    { color: '#f59e0b', label: '$5-20' },
+    { color: '#f43f5e', label: '$20+' },
+  ],
+  synergy: [
+    { color: '#ef4444', label: '0' },
+    { color: '#71717a', label: '1-2' },
+    { color: '#38bdf8', label: '3-5' },
+    { color: '#a78bfa', label: '6-9' },
+    { color: '#fbbf24', label: '10+' },
+  ],
+};
+
 
 export const DeckVisualizer = ({ 
     cards, 
@@ -202,7 +394,9 @@ export const DeckVisualizer = ({
     highlightedColors,
     onOpenSimulator,
     onRedrawRandomHand,
-    onLoadSpotlightHand
+    onLoadSpotlightHand,
+    nodeColorMode,
+    onNodeColorModeChange
 }: DeckVisualizerProps): React.ReactElement | null => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const svgContainerRef = useRef<HTMLDivElement | null>(null);
@@ -214,6 +408,16 @@ export const DeckVisualizer = ({
   const [hoveredHandCardId, setHoveredHandCardId] = useState<string | null>(null);
   const [activeLinkInfo, setActiveLinkInfo] = useState<any>(null);
   const [popupPosition, setPopupPosition] = useState<{ x: number; y: number } | null>(null);
+  const [internalColorMode, setInternalColorMode] = useState<NodeColorMode>('color');
+  const activeColorMode: NodeColorMode = nodeColorMode ?? internalColorMode;
+  const activeColorModeRef = useRef<NodeColorMode>(activeColorMode);
+  activeColorModeRef.current = activeColorMode;
+  const nodeDegreeMapRef = useRef<Map<string, number>>(new Map());
+
+  const handleColorModeChange = useCallback((mode: NodeColorMode) => {
+    setInternalColorMode(mode);
+    onNodeColorModeChange?.(mode);
+  }, [onNodeColorModeChange]);
 
   const drawnCardIds = useMemo(() => new Set(drawnSampleHand?.map(c => c.id) || []), [drawnSampleHand]);
   
@@ -341,6 +545,16 @@ export const DeckVisualizer = ({
         finalLinks.push({ source: sourceId, target: targetId, keyword: li.keyword, color: li.color, linkNum: idx, totalLinksInGroup: linkData.length });
       });
     });
+
+    const degreeMap = new Map<string, number>();
+    d3Nodes.forEach(n => degreeMap.set(n.id, 0));
+    finalLinks.forEach(link => {
+      const sId = typeof link.source === 'string' ? link.source : link.source.id;
+      const tId = typeof link.target === 'string' ? link.target : link.target.id;
+      degreeMap.set(sId, (degreeMap.get(sId) ?? 0) + 1);
+      degreeMap.set(tId, (degreeMap.get(tId) ?? 0) + 1);
+    });
+    nodeDegreeMapRef.current = degreeMap;
     
     const linkGroup = svg.append("g").attr("class", "links");
     const nodeGroup = svg.append("g").attr("class", "nodes");
@@ -380,65 +594,17 @@ export const DeckVisualizer = ({
         const g = select(this); 
         g.selectAll("circle.pin-highlight-ring").remove(); 
         g.select(".commander-crown-group").selectAll("*").remove(); 
-        g.selectAll("path.eldrazi-star").remove();
         
         const baseR = NODE_RADIUS_BASE + Math.log2(Math.max(1, d.quantity)) * NODE_RADIUS_SCALE;
         const baseCircle = g.select<SVGCircleElement>("circle.base-node-circle").attr("r", baseR);
-        
-        let colors = getCardColors(d);
-        const isEldraziCard = colors.length === 0 && isEldrazi(d);
-        
-        let fillVal = '#4b5563'; // default gray for colorless
-        if ((d.keywords || []).map(k=>k.toLowerCase()).includes('land') && colors.length === 0) {
-          fillVal = '#374151'; // dark gray for colorless lands
-        }
-        
-        g.selectAll("path.color-segment").remove();
-        
-        if (colors.length <= 2) {
-          if (colors.length === 1) {
-            fillVal = MTG_COLOR_MAP[colors[0]] || '#4b5563';
-          } else if (colors.length === 2) {
-            fillVal = `url(#grad-${colors.join('-')})`;
-          }
-          baseCircle.attr("fill", fillVal).style("display", null);
-        } else {
-          baseCircle.attr("fill", "none");
-          
-          if (colors.length > 4) {
-            colors = ['W', 'U', 'B', 'R', 'G'];
-          }
-          
-          const numColors = colors.length;
-          colors.forEach((colCode, idx) => {
-            const color = MTG_COLOR_MAP[colCode] || '#6b7280';
-            const startAngle = idx * (2 * Math.PI / numColors) - Math.PI / 2;
-            const endAngle = (idx + 1) * (2 * Math.PI / numColors) - Math.PI / 2;
-            const pathD = getPathForWedge(baseR, startAngle, endAngle);
-            
-            g.insert("path", "circle.base-node-circle")
-             .attr("class", "color-segment")
-             .attr("d", pathD)
-             .attr("fill", color)
-             .style("pointer-events", "none");
-          });
-        }
-        g.select<SVGTextElement>(".node-label").attr("y", baseR + 8).text(d.name.length > 15 ? d.name.substring(0,12) + "..." : d.name).attr("fill", "#d4d4d8");
 
-        if (isEldraziCard) {
-            const starSize = baseR * 0.7;
-            g.append("path")
-             .attr("class", "eldrazi-star")
-             .attr("d", `M 0,${-starSize} Q 0,0 ${starSize},0 Q 0,0 0,${starSize} Q 0,0 ${-starSize},0 Q 0,0 0,${-starSize}`)
-             .attr("fill", "#cbd5e1")
-             .attr("stroke", "#1f2937")
-             .attr("stroke-width", 0.7)
-             .style("pointer-events", "none");
-        }
+        applyNodeFill(g, d, activeColorModeRef.current, degreeMap, false);
+
+        g.select<SVGTextElement>(".node-label").attr("y", baseR + 8).text(d.name.length > 15 ? d.name.substring(0,12) + "..." : d.name).attr("fill", "#d4d4d8");
 
         if (d.id === commanderId) {
             baseCircle.attr("stroke", COMMANDER_ELIGIBLE_STROKE_COLOR).attr("stroke-width", 3);
-            const crown = g.select(".commander-crown-group").append("path").attr("d", "M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14a1 1 0 0 1 0 2H5a1 1 0 0 1 0-2z").attr("fill", "#FACC15").attr("transform", `translate(0, ${-(baseR + 8)}) scale(${baseR/15}) translate(-12,-12)`);
+            g.select(".commander-crown-group").append("path").attr("d", "M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14a1 1 0 0 1 0 2H5a1 1 0 0 1 0-2z").attr("fill", "#FACC15").attr("transform", `translate(0, ${-(baseR + 8)}) scale(${baseR/15}) translate(-12,-12)`);
         } else if (weaklyConnectedHighlightSet.has(d.id)) {
             baseCircle.attr("stroke", WEAKLY_CONNECTED_STROKE_COLOR).attr("stroke-width", WEAKLY_CONNECTED_STROKE_WIDTH);
         } else if (selectedCardInListId === d.id) {
@@ -457,7 +623,20 @@ export const DeckVisualizer = ({
         });
     });
 
-    allNodes.on("mouseover", (e, d) => { tooltip.style("opacity", .9).html(`<strong>${d.name}</strong>`).style("left", (e.pageX + 15) + "px").style("top", (e.pageY - 28) + "px"); })
+    allNodes.on("mouseover", (e, d) => {
+                const mode = activeColorModeRef.current;
+                let extra = '';
+                if (mode === 'cmc') {
+                  extra = isLandCard(d) ? '<div style="font-size:11px;color:#a1a1aa">Land</div>' : `<div style="font-size:11px;color:#38bdf8">CMC ${getCardCmc(d)}</div>`;
+                } else if (mode === 'price') {
+                  const p = parseFloat(d.prices?.usd || '');
+                  extra = Number.isNaN(p) ? '<div style="font-size:11px;color:#a1a1aa">Price N/A</div>' : `<div style="font-size:11px;color:#2dd4bf">$${p.toFixed(2)}</div>`;
+                } else if (mode === 'synergy') {
+                  const deg = nodeDegreeMapRef.current.get(d.id) ?? 0;
+                  extra = `<div style="font-size:11px;color:#fbbf24">${deg} ${deg === 1 ? 'link' : 'links'}</div>`;
+                }
+                tooltip.style("opacity", .9).html(`<strong>${d.name}</strong>${extra}`).style("left", (e.pageX + 15) + "px").style("top", (e.pageY - 28) + "px");
+            })
             .on("mouseout", () => tooltip.style("opacity", 0))
             .on("click", (e, d) => { e.stopPropagation(); if (selectedNodeForPopup?.id === d.id) handleClosePopup(); else { setPopupPosition(calculatePopupPosition(d, zoomTransform(svgRef.current!), svgDimensions)); onNodeSelectionChange(d, d.keywords); } });
 
@@ -694,6 +873,15 @@ export const DeckVisualizer = ({
   }, [highlightedColors, drawnCardIds, activeLinkInfo, keywordConfig, selectedNodeForPopup, selectedCardInListId]);
 
   useEffect(() => {
+    if (!svgRef.current) return;
+    const svg = select(svgRef.current);
+    const degreeMap = nodeDegreeMapRef.current;
+    svg.selectAll<SVGGElement, D3Node>("g.node-group").each(function(d) {
+      applyNodeFill(select(this), d, activeColorMode, degreeMap, true);
+    });
+  }, [activeColorMode]);
+
+  useEffect(() => {
     if (panToNodeId && svgRef.current && zoomBehaviorRef.current && simulationRef.current) {
       const node = simulationRef.current.nodes().find(n => n.id === panToNodeId);
       if (node) {
@@ -773,6 +961,51 @@ export const DeckVisualizer = ({
         )}
         <div ref={svgContainerRef} className="flex-grow relative min-h-0" onClick={handleClosePopup}>
             <svg ref={svgRef}><defs></defs></svg>
+
+            {/* Floating Node Color Mode Switcher + Mini Legend */}
+            <div
+                className="absolute top-3 left-3 z-40 flex flex-col items-start gap-1.5 select-none"
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* Mode Pill Switcher */}
+                <div className="flex items-center gap-0.5 p-1 bg-zinc-900/90 border border-zinc-700/80 rounded-xl shadow-xl backdrop-blur-md">
+                    {NODE_COLOR_MODE_OPTIONS.map((opt) => {
+                        const isActive = activeColorMode === opt.id;
+                        return (
+                            <button
+                                key={opt.id}
+                                type="button"
+                                onClick={() => handleColorModeChange(opt.id)}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all active:scale-95 ${
+                                    isActive
+                                        ? 'bg-amber-500/20 text-amber-200 border border-amber-500/40 shadow-sm'
+                                        : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/80 border border-transparent'
+                                }`}
+                            >
+                                {opt.label}
+                            </button>
+                        );
+                    })}
+                </div>
+
+                {/* Mini Color-Scale Legend */}
+                <div className="flex flex-wrap items-center gap-2 px-2.5 py-1 bg-zinc-900/85 border border-zinc-800/90 rounded-lg shadow-lg backdrop-blur-md">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                        {activeColorMode === 'color' ? 'Identity' : activeColorMode === 'cmc' ? 'Mana Value' : activeColorMode === 'price' ? 'USD' : 'Links'}
+                    </span>
+                    <div className="flex items-center gap-2">
+                        {NODE_COLOR_LEGENDS[activeColorMode].map((item) => (
+                            <div key={item.label} className="flex items-center gap-1">
+                                <span
+                                    className="w-2.5 h-2.5 rounded-full border border-white/20 shrink-0"
+                                    style={{ backgroundColor: item.color }}
+                                />
+                                <span className="text-[10px] font-mono text-zinc-300">{item.label}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
             
             {/* Fit to Screen Button */}
             <div className="absolute bottom-3 right-3 z-40 flex flex-col gap-2">

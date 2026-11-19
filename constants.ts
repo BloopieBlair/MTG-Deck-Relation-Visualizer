@@ -43,36 +43,45 @@ export const MOCK_CARD_DATABASE: Record<string, CardGameData> = {
 };
 
 export const DEFAULT_KEYWORD_STYLES: KeywordStyle[] = [
-  // Common Card Types (enabled by default for immediate visualization)
-  { id: uuidv4(), name: "land", color: "#A0AEC0", enabled: true, glowEnabled: false },         // Tailwind Gray 500
-  { id: uuidv4(), name: "creature", color: "#63B3ED", enabled: true, glowEnabled: false },     // Tailwind Blue 400
-  { id: uuidv4(), name: "artifact", color: "#D69E2E", enabled: true, glowEnabled: false },     // Tailwind Yellow 600
-  { id: uuidv4(), name: "enchantment", color: "#F6E05E", enabled: true, glowEnabled: false },  // Tailwind Yellow 300
-  { id: uuidv4(), name: "instant", color: "#ED64A6", enabled: true, glowEnabled: false },       // Tailwind Pink 500
-  { id: uuidv4(), name: "sorcery", color: "#F59E0B", enabled: true, glowEnabled: false },       // Tailwind Amber 500
-  { id: uuidv4(), name: "planeswalker", color: "#4FD1C5", enabled: true, glowEnabled: false },  // Tailwind Teal 400
-  { id: uuidv4(), name: "legendary", color: "#FBBF24", enabled: true, glowEnabled: false },     // Tailwind Amber 400 (Gold-ish)
+  // Common Card Types (disabled by default for clean Synergy Mode visualization)
+  { id: uuidv4(), name: "land", color: "#A0AEC0", enabled: false, glowEnabled: false, category: 'type' },         // Tailwind Gray 500
+  { id: uuidv4(), name: "creature", color: "#63B3ED", enabled: false, glowEnabled: false, category: 'type' },     // Tailwind Blue 400
+  { id: uuidv4(), name: "artifact", color: "#D69E2E", enabled: false, glowEnabled: false, category: 'type' },     // Tailwind Yellow 600
+  { id: uuidv4(), name: "enchantment", color: "#F6E05E", enabled: false, glowEnabled: false, category: 'type' },  // Tailwind Yellow 300
+  { id: uuidv4(), name: "instant", color: "#ED64A6", enabled: false, glowEnabled: false, category: 'type' },       // Tailwind Pink 500
+  { id: uuidv4(), name: "sorcery", color: "#F59E0B", enabled: false, glowEnabled: false, category: 'type' },       // Tailwind Amber 500
+  { id: uuidv4(), name: "planeswalker", color: "#4FD1C5", enabled: false, glowEnabled: false, category: 'type' },  // Tailwind Teal 400
+  { id: uuidv4(), name: "legendary", color: "#FBBF24", enabled: false, glowEnabled: false, category: 'type' },     // Tailwind Amber 400 (Gold-ish)
 
-
-  // Specific Gameplay Keywords - Revised colors
-  { id: uuidv4(), name: "flying", color: "#4299E1", enabled: true, glowEnabled: false },        // Tailwind Blue 500
-  { id: uuidv4(), name: "mana ramp", color: "#48BB78", enabled: true, glowEnabled: false },    // Tailwind Green 500
-  { id: uuidv4(), name: "card draw", color: "#3B82F6", enabled: true, glowEnabled: false },     // Tailwind Blue 600
-  { id: uuidv4(), name: "removal", color: "#F56565", enabled: true, glowEnabled: false },      // Tailwind Red 500
-  { id: uuidv4(), name: "tutor", color: "#A78BFA", enabled: true, glowEnabled: false },        // Tailwind Purple 400
-  { id: uuidv4(), name: "recursion", color: "#38B2AC", enabled: true, glowEnabled: false },    // Tailwind Teal 500
-  { id: uuidv4(), name: "treasure", color: "#ECC94B", enabled: true, glowEnabled: false },     // Tailwind Yellow 500
-  { id: uuidv4(), name: "counter", color: "#60A5FA", enabled: true, glowEnabled: false }, // Tailwind Blue 400 - For counterspells, often tied to removal
-
+  // Core Mechanical & Synergy Archetypes (enabled by default)
+  { id: uuidv4(), name: "mana ramp", color: "#48BB78", enabled: true, glowEnabled: false, category: 'synergy' },       // Tailwind Green 500
+  { id: uuidv4(), name: "card draw", color: "#3B82F6", enabled: true, glowEnabled: false, category: 'synergy' },       // Tailwind Blue 600
+  { id: uuidv4(), name: "removal", color: "#F56565", enabled: true, glowEnabled: false, category: 'synergy' },         // Tailwind Red 500
+  { id: uuidv4(), name: "board wipe", color: "#DC2626", enabled: true, glowEnabled: false, category: 'synergy' },      // Tailwind Red 600
+  { id: uuidv4(), name: "counter", color: "#60A5FA", enabled: true, glowEnabled: false, category: 'synergy' },         // Tailwind Blue 400
+  { id: uuidv4(), name: "tutor", color: "#A78BFA", enabled: true, glowEnabled: false, category: 'synergy' },           // Tailwind Purple 400
+  { id: uuidv4(), name: "tokens", color: "#F472B6", enabled: true, glowEnabled: false, category: 'synergy' },          // Tailwind Pink 400
+  { id: uuidv4(), name: "+1/+1 counters", color: "#84CC16", enabled: true, glowEnabled: false, category: 'synergy' },  // Tailwind Lime 500
+  { id: uuidv4(), name: "sacrifice", color: "#E11D48", enabled: true, glowEnabled: false, category: 'synergy' },       // Tailwind Rose 600
+  { id: uuidv4(), name: "recursion", color: "#38B2AC", enabled: true, glowEnabled: false, category: 'synergy' },       // Tailwind Teal 500
+  { id: uuidv4(), name: "graveyard", color: "#8B5CF6", enabled: true, glowEnabled: false, category: 'synergy' },       // Tailwind Violet 500
+  { id: uuidv4(), name: "blink", color: "#22D3EE", enabled: true, glowEnabled: false, category: 'synergy' },           // Tailwind Cyan 400
+  { id: uuidv4(), name: "protection", color: "#FDE047", enabled: true, glowEnabled: false, category: 'synergy' },      // Tailwind Yellow 300
+  { id: uuidv4(), name: "lifegain", color: "#86EFAC", enabled: true, glowEnabled: false, category: 'synergy' },        // Tailwind Green 300
+  { id: uuidv4(), name: "stax", color: "#94A3B8", enabled: true, glowEnabled: false, category: 'synergy' },            // Tailwind Slate 400
+  { id: uuidv4(), name: "cost reduction", color: "#38BDF8", enabled: true, glowEnabled: false, category: 'synergy' },  // Tailwind Sky 400
+  { id: uuidv4(), name: "landfall", color: "#10B981", enabled: true, glowEnabled: false, category: 'synergy' },        // Tailwind Emerald 500
+  { id: uuidv4(), name: "treasure", color: "#ECC94B", enabled: true, glowEnabled: false, category: 'synergy' },        // Tailwind Yellow 500
+  { id: uuidv4(), name: "flying", color: "#4299E1", enabled: true, glowEnabled: false, category: 'synergy' },          // Tailwind Blue 500
 
   // Other keywords (can be enabled by user)
-  { id: uuidv4(), name: "lifelink", color: "#E2E8F0", enabled: false, glowEnabled: false },     // Tailwind Gray 200
-  { id: uuidv4(), name: "deathtouch", color: "#805AD5", enabled: false, glowEnabled: false },   // Tailwind Purple 600
-  { id: uuidv4(), name: "trample", color: "#38A169", enabled: false, glowEnabled: false },      // Tailwind Green 600
-  { id: uuidv4(), name: "haste", color: "#ED8936", enabled: false, glowEnabled: false },       // Tailwind Orange 500
-  { id: uuidv4(), name: "vigilance", color: "#CBD5E0", enabled: false, glowEnabled: false },   // Tailwind Gray 400
-  { id: uuidv4(), name: "first strike", color: "#E53E3E", enabled: false, glowEnabled: false },// Tailwind Red 600
-  { id: uuidv4(), name: "indestructible", color: "#718096", enabled: false, glowEnabled: false },// Tailwind Gray 600
+  { id: uuidv4(), name: "lifelink", color: "#E2E8F0", enabled: false, glowEnabled: false, category: 'synergy' },       // Tailwind Gray 200
+  { id: uuidv4(), name: "deathtouch", color: "#805AD5", enabled: false, glowEnabled: false, category: 'synergy' },     // Tailwind Purple 600
+  { id: uuidv4(), name: "trample", color: "#38A169", enabled: false, glowEnabled: false, category: 'synergy' },        // Tailwind Green 600
+  { id: uuidv4(), name: "haste", color: "#ED8936", enabled: false, glowEnabled: false, category: 'synergy' },          // Tailwind Orange 500
+  { id: uuidv4(), name: "vigilance", color: "#CBD5E0", enabled: false, glowEnabled: false, category: 'synergy' },      // Tailwind Gray 400
+  { id: uuidv4(), name: "first strike", color: "#E53E3E", enabled: false, glowEnabled: false, category: 'synergy' },   // Tailwind Red 600
+  { id: uuidv4(), name: "indestructible", color: "#718096", enabled: false, glowEnabled: false, category: 'synergy' }, // Tailwind Gray 600
 ];
 
 // Default colors for pinned searches. Yellow (Gold), Green, Blue. These can be customized by the user.

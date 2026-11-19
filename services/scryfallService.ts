@@ -1,10 +1,22 @@
 
-import type { CardGameData, ParsedManaCost, ManaSymbol } from '../types';
+import type { CardGameData, CardPrices, ParsedManaCost, ManaSymbol } from '../types';
 
 const SCRYFALL_API_BASE_URL = "https://api.scryfall.com";
 const SCRYFALL_REQUEST_DELAY_MS = 150; // 150ms delay to stay safely within Scryfall's rate limits (10 requests/sec)
+const SCRYFALL_CACHE_PREFIX = "scryfall_cache_v2_";
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+export interface ScryfallSearchResult {
+  name: string;
+  manaCostString?: string;
+  typeLine?: string;
+  imageUrl?: string;
+  colors?: string[];
+  colorIdentity?: string[];
+  prices?: CardPrices;
+  cmc?: number;
+}
 
 interface ScryfallImageUris {
   small?: string;
@@ -37,6 +49,17 @@ interface ScryfallCard {
   produced_mana?: ManaSymbol[]; // e.g. ["W", "U", "B", "R", "G"] for "mana of any color"
   colors?: string[];
   color_identity?: string[];
+  cmc?: number;
+  prices?: {
+    usd?: string | null;
+    usd_foil?: string | null;
+    eur?: string | null;
+    [key: string]: string | null | undefined;
+  };
+  legalities?: Record<string, string>;
+  edhrec_rank?: number;
+  set?: string;
+  set_name?: string;
 }
 
 function extractKeywordsFromTypeLine(typeLine?: string): string[] {
@@ -91,37 +114,111 @@ export function parseScryfallManaCost(costString?: string): ParsedManaCost {
   return parsed;
 }
 
-function parseOracleTextForKeywords(oracleText?: string): string[] {
+function parseOracleTextForKeywords(oracleText?: string, typeLine?: string): string[] {
   if (!oracleText) return [];
   const foundKeywords = new Set<string>();
   const textLower = oracleText.toLowerCase();
+  const isLand = typeLine ? typeLine.toLowerCase().includes("land") : false;
 
+  // Removal
   if (/\b(destroy target|exile target|destroy all|exile all|target creature deals damage to itself equal to its power|target player sacrifices)\b/i.test(textLower)) {
     foundKeywords.add("removal");
   }
-  if (/\b(return target .* to its owner's hand)\b/i.test(textLower) && !/\byou control\b/.test(textLower)) { 
+  if (/\b(return target .* to its owner's hand)\b/i.test(textLower) && !/\byou control\b/.test(textLower)) {
     foundKeywords.add("removal");
   }
-   if (/\b(counter target spell)\b/i.test(textLower)) {
-    foundKeywords.add("removal"); 
-    foundKeywords.add("counter"); 
+  if (/\b(counter target [^.]*spell|counter target (?:activated |triggered )?ability)\b/i.test(textLower)) {
+    foundKeywords.add("removal");
+    foundKeywords.add("counter");
   }
-
   if (/\bdeals \d+ damage to target creature\b/i.test(textLower) ||
       /\bdeals \d+ damage to any target\b/i.test(textLower) ||
       /\bdeals \d+ damage to target player\b/i.test(textLower) ||
-      /\bdeals \w+ damage to target creature or planeswalker\b/i.test(textLower) || 
-      /\bdeals damage to target creature equal to\b/i.test(textLower) || 
-      /\bfight target creature\b/i.test(textLower)) { 
+      /\bdeals \w+ damage to target creature or planeswalker\b/i.test(textLower) ||
+      /\bdeals damage to target creature equal to\b/i.test(textLower) ||
+      /\bfight target creature\b/i.test(textLower)) {
     foundKeywords.add("removal");
   }
 
-  if (/\b(draw a card|draw two cards|draw three cards|draw X cards|target player draws .* card|look at the top .* cards of your library.*put .* into your hand)\b/i.test(textLower)) {
+  // Board Wipe
+  if (/\b(destroy all|exile all|all creatures get -\d+\/-\d+|all creatures get -x\/-x|return all (?:creatures|nonland permanents|permanents) to their owners' hands|each player sacrifices all|deals (?:\d+|x) damage to each creature)\b/i.test(textLower)) {
+    foundKeywords.add("board wipe");
+  }
+
+  // Card Draw
+  if (/\b(draw a card|draw (?:two|three|four|five|x|\d+) cards|target player draws .* card|look at the top .* cards of your library.*put .* into your hand)\b/i.test(textLower)) {
     foundKeywords.add("card draw");
   }
 
+  // Tutor
   if (/\b(search your library for .* card|search your library for up to .* cards)\b/i.test(textLower)) {
     foundKeywords.add("tutor");
+  }
+
+  // Mana Ramp
+  if (/\b(search your library for (?:a |up to [^.]*? )?(?:basic )?(?:land|plains|island|swamp|mountain|forest) cards?[^.]*onto the battlefield|you may play an additional land|play additional lands|put a land card from your hand onto the battlefield|add \{[wubrgc]\}\{[wubrgc]\}|add (?:two|three|four|x) mana)\b/i.test(textLower)) {
+    foundKeywords.add("mana ramp");
+  } else if (!isLand && /\badd (?:one mana of any color|\{[wubrgc]\}|mana of any)\b/i.test(textLower)) {
+    foundKeywords.add("mana ramp");
+  }
+
+  // Tokens & Treasure
+  if (/\bcreate\b[^.]*\btokens?\b|\btoken (?:creature|artifact|enchantment)s?\b|\bfor each token\b|\bpopulate\b/i.test(textLower)) {
+    foundKeywords.add("tokens");
+  }
+  if (/\btreasure tokens?\b/i.test(textLower)) {
+    foundKeywords.add("treasure");
+    foundKeywords.add("mana ramp");
+  }
+
+  // +1/+1 Counters
+  if (/\+1\/\+1 counter/i.test(textLower)) {
+    foundKeywords.add("+1/+1 counters");
+  }
+
+  // Sacrifice
+  if (/\bsacrifice (?:a|an|another|up to|one or more|x|\d+) (?:creature|artifact|enchantment|permanent|land|token)\b|\bwhenever (?:a|another) (?:creature|permanent|artifact) (?:you control )?dies\b|\bwhenever you sacrifice\b/i.test(textLower)) {
+    foundKeywords.add("sacrifice");
+  }
+
+  // Recursion
+  if (/\breturn (?:target |up to [^.]*? |a |all )?(?:creature |artifact |enchantment |instant |sorcery |permanent |land )?cards? from your graveyard to (?:your hand|the battlefield|the top of your library)\b|\bcast [^.]*from your graveyard\b|\bplay lands from your graveyard\b|\bflashback\b|\bunearth\b|\bescape\b/i.test(textLower)) {
+    foundKeywords.add("recursion");
+  }
+
+  // Graveyard
+  if (/\b(graveyard|mill|dredge|delve|delirium|threshold|surveil|undergrowth)\b/i.test(textLower)) {
+    foundKeywords.add("graveyard");
+  }
+
+  // Blink
+  if (/\bexile (?:target |up to [^.]*? |another )?(?:creature|permanent|artifact)[^.]*return (?:it|them|that card|those cards) to the battlefield\b|\bphases? out\b/i.test(textLower)) {
+    foundKeywords.add("blink");
+  }
+
+  // Protection
+  if (/\b(gains? (?:hexproof|indestructible|shroud|protection from|ward)|have (?:hexproof|indestructible|shroud|protection from|ward)|protection from|prevent all (?:combat )?damage|can't be the target of|phases? out)\b/i.test(textLower)) {
+    foundKeywords.add("protection");
+  }
+
+  // Lifegain
+  if (/\b(you gain (?:\d+|x|life)|gains? (?:\d+|x) life|whenever you gain life|lifelink)\b/i.test(textLower)) {
+    foundKeywords.add("lifegain");
+  }
+
+  // Stax
+  if (/\b(opponents? can't|players? can't|spells (?:your opponents cast|cost) \{?\d+\}? more to cast|(?:artifacts|creatures|lands|permanents) your opponents control enter(?:s)? (?:the battlefield )?tapped|don't untap during|unless (?:its controller|that player|they) pays?|can't cast more than one spell)\b/i.test(textLower)) {
+    foundKeywords.add("stax");
+  }
+
+  // Cost Reduction
+  if (/\b(costs? \{[0-9wubrgcx]+\} less to cast|without paying (?:its|their) mana costs?|convoke|affinity for|delve|improvise)\b/i.test(textLower)) {
+    foundKeywords.add("cost reduction");
+  }
+
+  // Landfall
+  if (/\b(landfall|whenever a land enters(?: the battlefield)? under your control|whenever a land you control enters)\b/i.test(textLower)) {
+    foundKeywords.add("landfall");
   }
 
   return Array.from(foundKeywords);
@@ -148,16 +245,18 @@ function getCachedCard(name: string): CardGameData | null {
   const norm = normalizeCardName(name);
   if (!norm) return null;
   if (memoryCardCache[norm]) return memoryCardCache[norm];
-  
+
+  if (typeof localStorage === 'undefined') return null;
+
   try {
-    const serialized = localStorage.getItem(`scryfall_cache_${norm}`);
+    const serialized = localStorage.getItem(`${SCRYFALL_CACHE_PREFIX}${norm}`);
     if (serialized) {
       const parsed = JSON.parse(serialized) as CardGameData;
       memoryCardCache[norm] = parsed;
       return parsed;
     }
   } catch (e) {
-    // Ignore storage quota/access errors
+    // Ignore storage quota/access/parse errors
   }
   return null;
 }
@@ -166,10 +265,13 @@ function setCachedCard(name: string, data: CardGameData): void {
   const norm = normalizeCardName(name);
   if (!norm || !data) return;
   memoryCardCache[norm] = data;
+
+  if (typeof localStorage === 'undefined') return;
+
   try {
-    localStorage.setItem(`scryfall_cache_${norm}`, JSON.stringify(data));
+    localStorage.setItem(`${SCRYFALL_CACHE_PREFIX}${norm}`, JSON.stringify(data));
   } catch (e) {
-    // Storage might be full, fallback to memory
+    // Storage quota exceeded or unavailable; gracefully fall back to in-memory cache
   }
 }
 
@@ -336,7 +438,7 @@ function processScryfallData(data: ScryfallCard): CardGameData {
         extractKeywordsFromTypeLine(face.type_line).forEach(kw => collectedKeywords.add(kw));
         if (face.oracle_text) {
             texts.push(face.oracle_text);
-            parseOracleTextForKeywords(face.oracle_text).forEach(kw => collectedKeywords.add(kw));
+            parseOracleTextForKeywords(face.oracle_text, face.type_line || data.type_line).forEach(kw => collectedKeywords.add(kw));
         }
 
         if (index === 0) { // Prioritize first face for image and cost
@@ -369,7 +471,7 @@ function processScryfallData(data: ScryfallCard): CardGameData {
       }
       extractKeywordsFromTypeLine(data.type_line).forEach(kw => collectedKeywords.add(kw));
       if (data.oracle_text) {
-        parseOracleTextForKeywords(data.oracle_text).forEach(kw => collectedKeywords.add(kw));
+        parseOracleTextForKeywords(data.oracle_text, data.type_line).forEach(kw => collectedKeywords.add(kw));
       }
       imageUrl = getImageUrl(data.image_uris);
       manaCostString = data.mana_cost;
@@ -394,6 +496,14 @@ function processScryfallData(data: ScryfallCard): CardGameData {
         }
     }
 
+    const prices: CardPrices | undefined = data.prices
+      ? {
+          usd: data.prices.usd ?? null,
+          usd_foil: data.prices.usd_foil ?? null,
+          eur: data.prices.eur ?? null,
+        }
+      : undefined;
+
     return {
       nameScryfall: data.name, // Use the name from Scryfall
       keywords: Array.from(collectedKeywords),
@@ -404,5 +514,77 @@ function processScryfallData(data: ScryfallCard): CardGameData {
       colors: colors,
       typeLine: typeLine,
       colorIdentity: colorIdentity,
+      cmc: typeof data.cmc === 'number' ? data.cmc : undefined,
+      prices,
+      legalities: data.legalities,
+      edhrecRank: typeof data.edhrec_rank === 'number' ? data.edhrec_rank : undefined,
+      setCode: data.set,
+      setName: data.set_name,
     };
+}
+
+export async function searchScryfallCards(
+  query: string,
+  options?: { colorIdentity?: string[]; limit?: number }
+): Promise<ScryfallSearchResult[]> {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+
+  const limit = options?.limit ?? 12;
+  let fullQuery = trimmed;
+
+  if (options?.colorIdentity && !/\b(id|identity)(<=|>=|<|>|:|=)/i.test(fullQuery)) {
+    const validColors = options.colorIdentity
+      .map(c => c.toUpperCase())
+      .filter(c => ['W', 'U', 'B', 'R', 'G'].includes(c));
+    const idFilter = validColors.length > 0 ? validColors.join('') : 'c';
+    fullQuery = `${fullQuery} id<=${idFilter}`;
+  }
+
+  const url = `${SCRYFALL_API_BASE_URL}/cards/search?q=${encodeURIComponent(fullQuery)}`;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      if (response.status === 404) {
+        return [];
+      }
+      console.warn(`[ScryfallService] Search failed with status ${response.status} for query: ${fullQuery}`);
+      return [];
+    }
+
+    const json = await response.json();
+    const cards: ScryfallCard[] = Array.isArray(json.data) ? json.data : [];
+
+    return cards.slice(0, limit).map((card): ScryfallSearchResult => {
+      const firstFace = card.card_faces?.[0];
+      const imageUrl = getImageUrl(card.image_uris) || getImageUrl(firstFace?.image_uris);
+      const manaCostString = card.mana_cost || firstFace?.mana_cost;
+      const typeLine = card.type_line || firstFace?.type_line;
+      const colors = card.colors && card.colors.length > 0
+        ? card.colors
+        : (firstFace?.colors || []);
+      const prices: CardPrices | undefined = card.prices
+        ? {
+            usd: card.prices.usd ?? null,
+            usd_foil: card.prices.usd_foil ?? null,
+            eur: card.prices.eur ?? null,
+          }
+        : undefined;
+
+      return {
+        name: card.name,
+        manaCostString,
+        typeLine,
+        imageUrl,
+        colors,
+        colorIdentity: card.color_identity || [],
+        prices,
+        cmc: typeof card.cmc === 'number' ? card.cmc : undefined,
+      };
+    });
+  } catch (error) {
+    console.error(`[ScryfallService] Search network/parsing error for query: ${fullQuery}`, error);
+    return [];
+  }
 }

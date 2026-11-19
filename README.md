@@ -22,11 +22,12 @@ An interactive synergy manifold and analytical studio for **Magic: The Gathering
 
 ## 🌟 Key Features
 
-### 🕸️ 1. Interactive Synergy Mapping
-* **D3 Force-Directed Network**: Visualizes cards as interactive nodes linked by shared mechanical keywords (e.g. *Flying*, *Mana Ramp*, *Card Draw*, *Removal*, *Tutor*, *Recursion*, *+1/+1 Counter*).
-* **Curved Multi-Links**: When cards share multiple mechanics, connections render as non-overlapping curved paths colored by mechanic type.
-* **Commander Centricity**: Designate your Commander to pin it at the center of the graph with a Mythic Gold crown badge, showing how your deck orbits its primary engine.
-* **Orphan & Weak Connection Highlighting**: Instantly detect isolated card clusters or cards with only a single connection to the rest of the deck for streamlining cuts.
+### 🕸️ 1. Interactive Synergy Mapping & Heatmaps
+* **D3 Force-Directed Network**: Visualizes cards as interactive nodes linked by shared mechanical synergies (*Mana Ramp*, *Card Draw*, *Removal*, *Board Wipe*, *Tokens*, *+1/+1 Counters*, *Sacrifice*, *Recursion*, *Blink*, *Protection*, *Lifegain*, *Stax*, *Landfall*, *Tutor*).
+* **Synergy Mode vs. Type Mode**: Opens in clean **Synergy Mode** by default (highlighting mechanical engines rather than creature/land hairballs), with 1-click toggles for Type Mode, All, or None.
+* **Live Node Heatmaps**: Switch node coloring smoothly without resetting the layout between **Color Identity**, **Mana Value (CMC) Heatmap**, **Budget / USD Price Heatmap**, and **Synergy Hubs (Link Degree)**.
+* **Curved Multi-Links & Commander Centricity**: Multi-mechanic connections render as non-overlapping curved paths, while your designated Commander anchors the graph with a Mythic Gold crown badge.
+* **Orphan & Weak Connection Highlighting**: Instantly detect isolated card clusters or weakly connected cards for streamlining cuts.
 
 ### 🤖 2. OpenRouter, Gemini & Local Ollama AI Deck Intelligence
 * **1-Click OpenRouter Connect (PKCE)**: Connect your OpenRouter account in one click to run AI deck evaluations using **100% free models** (`Google Gemini 2.0 Flash Free`, `DeepSeek R1 Free`, `Llama 3.3 70B Free`) or bring your own Google Gemini API key / local Ollama server.
@@ -47,11 +48,13 @@ An interactive synergy manifold and analytical studio for **Magic: The Gathering
 * **Interactive Mana Curve**: Inspect deck distribution across Mana Values (CMC) and colored pip intensity with detailed popup card lists.
 
 ![Mana Curve Dashboard & Hypergeometric Analysis](Images/Capture2.PNG)
+![5-Point Color Pie Map & What-If Card Swap Simulator](Images/Capture_ColorPie.PNG)
 
-### 🔍 5. Discovery Tools & MTG Arena Collection Sync
+### 🔍 5. Everyday Deckbuilder, Local Library & MTG Arena Sync
+* **Local Auto-Save, Deck Library & Shareable URLs**: Automatically saves your active deck in your browser, manage multiple decks in the **Decks** library modal, and generate `#deck=...` shareable links in one click.
+* **Live Scryfall Search & Decklist Tools**: Add cards via live debounced Scryfall search with artwork previews, USD pricing, and Commander color-identity filtering. Group your decklist by **Type**, **CMC**, **Role**, or **A–Z**, track **Mainboard vs. Considering**, and inspect real-time **Commander legality** and estimated USD deck value.
 * **1-Click Sample Decks**: Instantly test the graph in your browser with built-in **Boros Aggro (Anim Pakal)** and **5-Color Slivers** presets.
 * **Pinned Multi-Term Search**: Pin up to 3 search terms simultaneously with color-coded node highlights to inspect synergy overlaps.
-* **Scryfall High-Res Card Previews**: Hover or click any node to pull high-resolution card artwork, Oracle text, and mana breakdowns via the Scryfall API.
 * **MTG Arena Collection Drawer**: When running locally, sync your MTG Arena `Player.log` and SQLite card database to browse owned cards and filter by Commander color identity.
 
 ![MTG Arena Collection Sync](Images/Capture3.PNG)

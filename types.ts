@@ -22,6 +22,16 @@ export interface RawDeckCard {
   quantity: number;
 }
 
+export type DeckZone = 'commander' | 'mainboard' | 'sideboard' | 'considering';
+
+export interface CardPrices {
+  usd?: string | null;
+  usd_foil?: string | null;
+  eur?: string | null;
+}
+
+export type NodeColorMode = 'color' | 'cmc' | 'price' | 'synergy';
+
 export interface CardGameData {
   nameScryfall?: string; 
   keywords: string[];
@@ -32,6 +42,12 @@ export interface CardGameData {
   colors?: string[];
   typeLine?: string;
   colorIdentity?: string[];
+  cmc?: number;
+  prices?: CardPrices;
+  legalities?: Record<string, string>;
+  edhrecRank?: number;
+  setCode?: string;
+  setName?: string;
 }
 
 export interface ProcessedDeckCard extends CardGameData {
@@ -39,6 +55,17 @@ export interface ProcessedDeckCard extends CardGameData {
   name: string; 
   quantity: number;
   parsedManaCost?: ParsedManaCost;
+  zone?: DeckZone;
+}
+
+export interface SavedDeck {
+  id: string;
+  name: string;
+  commanderId: string | null;
+  cards: ProcessedDeckCard[];
+  updatedAt: number;
+  createdAt: number;
+  format?: string;
 }
 
 export interface KeywordStyle {
@@ -47,6 +74,7 @@ export interface KeywordStyle {
   color: string;
   enabled: boolean;
   glowEnabled?: boolean; // Added for per-keyword glow
+  category?: 'type' | 'synergy';
 }
 
 export interface ManaAnalysisData {

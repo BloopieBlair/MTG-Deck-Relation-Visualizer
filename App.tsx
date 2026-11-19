@@ -22,15 +22,26 @@ import { DeckListView } from './components/DeckListView';
 import { HoveredCardDisplay } from './components/HoveredCardDisplay';
 import { GoldfishSimulatorModal } from './components/GoldfishSimulatorModal';
 import { MtgaCollectionDrawer } from './components/MtgaCollectionDrawer';
+import { DeckLibraryModal } from './components/DeckLibraryModal';
 import { FooterBanner } from './components/FooterBanner';
 import { fetchMtgaCollection } from './services/mtgaLogService';
+import {
+  saveAutoSavedDeck,
+  loadAutoSavedDeck,
+  clearAutoSavedDeck,
+  listSavedDecks,
+  saveDeck,
+  deleteSavedDeck,
+  renameSavedDeck,
+  decodeDeckFromHash,
+} from './services/deckStorageService';
 import { PINNED_SEARCH_COLORS, ACTIVE_SEARCH_HIGHLIGHT_COLOR, SINGLE_SEARCH_RESULT_HIGHLIGHT_COLOR, DEFAULT_KEYWORD_STYLES, MOCK_CARD_DATABASE, SAMPLE_DECK_ANIM_PAKAL, SAMPLE_DECK_SLIVERS } from './constants';
 import { parseCsvContent } from './services/csvParser';
 import { fetchCardDataFromScryfall, fetchCardsBatch, parseScryfallManaCost, normalizeCardName } from './services/scryfallService';
 import { diffDeckSnapshots } from './services/colorPieService';
 import { getExampleSpotlightHand } from './services/goldfishSimulator';
 import { parseDecklistWithGemini, fetchCardKeywordsWithGemini, exchangeOpenRouterCodeForKey, DEFAULT_OPENROUTER_MODEL } from './services/geminiService';
-import type { RawDeckCard, ProcessedDeckCard, KeywordStyle, ManaAnalysisData, ParsedManaCost, ManaSymbol, ManaColor, D3Node, PinnedSearch, OrphanClusterInfo, AiClient, MtgaCardItem } from './types';
+import type { RawDeckCard, ProcessedDeckCard, KeywordStyle, ManaAnalysisData, ParsedManaCost, ManaSymbol, ManaColor, D3Node, PinnedSearch, OrphanClusterInfo, AiClient, MtgaCardItem, DeckZone, NodeColorMode, SavedDeck, CardGameData } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { HandIcon, XMarkIcon, PlusIcon, MapPinIcon, ArrowUturnLeftIcon, DownloadIcon, ShieldCheckIcon, CrownIcon, DocumentIcon, KeyIcon, SparklesIcon } from './components/icons';
 
@@ -59,6 +70,18 @@ function shuffleArray<T>(array: T[]): T[] {
 
 const MAX_PINNED_SEARCHES = 3;
 const MAX_HISTORY_SIZE = 20;
+
+const MOCK_CARD_DATABASE_NORMALIZED: Record<string, CardGameData> = Object.entries(MOCK_CARD_DATABASE).reduce(
+  (acc, [key, value]) => {
+    acc[normalizeCardName(key)] = value;
+    return acc;
+  },
+  {} as Record<string, CardGameData>
+);
+
+const findMockCardData = (cardName: string): CardGameData | null => {
+  return MOCK_CARD_DATABASE_NORMALIZED[normalizeCardName(cardName)] || null;
+};
 
 const isLegendaryCommanderCandidate = (card: ProcessedDeckCard): boolean => {
   const tl = (card.typeLine || '').toLowerCase();
@@ -133,6 +156,29 @@ const App: React.FC = () => {
   const [showCommanderSelectionModal, setShowCommanderSelectionModal] = useState<boolean>(false);
   const [showGoldfishSimulator, setShowGoldfishSimulator] = useState<boolean>(false);
   const [simulatorInitialUniverseId, setSimulatorInitialUniverseId] = useState<string | null>(null);
+
+  const [savedDecks, setSavedDecks] = useState<SavedDeck[]>(() => listSavedDecks());
+  const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
+  const [activeDeckName, setActiveDeckName] = useState<string>('Untitled Deck');
+  const [showDeckLibraryModal, setShowDeckLibraryModal] = useState<boolean>(false);
+  const [isStorageHydrated, setIsStorageHydrated] = useState<boolean>(false);
+
+  const [nodeColorMode, setNodeColorMode] = useState<NodeColorMode>('color');
+
+  const activeMainboardCards = useMemo(
+    () => processedDeckCards.filter(c => c.zone !== 'considering' && c.zone !== 'sideboard'),
+    [processedDeckCards]
+  );
+
+  const currentCommanderCard = useMemo(() => {
+    if (!commanderId) return null;
+    return processedDeckCards.find(c => c.id === commanderId) || null;
+  }, [processedDeckCards, commanderId]);
+
+  const commanderColorIdentity = useMemo(() => {
+    if (!currentCommanderCard) return undefined;
+    return currentCommanderCard.colorIdentity || currentCommanderCard.colors || [];
+  }, [currentCommanderCard]);
   
   const [showMtgaDrawer, setShowMtgaDrawer] = useState<boolean>(false);
   const [rightPanelTab, setRightPanelTab] = useState<'deck' | 'collection' | 'split'>('deck');
@@ -163,12 +209,15 @@ const App: React.FC = () => {
     loadMtgaCollectionData();
   }, [loadMtgaCollectionData]);
 
-  const handleAddCardToVisualizer = useCallback(async (cardNameOrItem: string | MtgaCardItem) => {
+  const handleAddCardToVisualizer = useCallback(async (cardNameOrItem: string | MtgaCardItem, zone?: DeckZone) => {
     const cardTitle = typeof cardNameOrItem === 'string' ? cardNameOrItem : cardNameOrItem.title;
     if (!cardTitle || cardTitle.startsWith('http://') || cardTitle.startsWith('https://')) {
       return;
     }
-    const existingIndex = processedDeckCards.findIndex(c => c.name.toLowerCase() === cardTitle.toLowerCase());
+    const targetZone: DeckZone = zone || 'mainboard';
+    const existingIndex = processedDeckCards.findIndex(
+      c => c.name.toLowerCase() === cardTitle.toLowerCase() && (c.zone || 'mainboard') === targetZone
+    );
     
     if (existingIndex >= 0) {
       setProcessedDeckCards(prev => prev.map((c, i) => i === existingIndex ? { ...c, quantity: c.quantity + 1 } : c));
@@ -178,36 +227,64 @@ const App: React.FC = () => {
     setIsLoading(true);
     setLoadingDetailMessage(`Adding "${cardTitle}" to visualizer...`);
     try {
-      const scryfallData = await fetchCardDataFromScryfall(cardTitle);
+      const scryfallData = (await fetchCardDataFromScryfall(cardTitle)) || findMockCardData(cardTitle);
       if (scryfallData) {
-        const newCard: ProcessedDeckCard = {
-          id: normalizeCardName(scryfallData.nameScryfall),
-          name: scryfallData.nameScryfall || cardTitle,
-          quantity: 1,
-          keywords: scryfallData.keywords,
-          text: scryfallData.text || '',
-          imageUrl: scryfallData.imageUrl,
-          manaCostString: scryfallData.manaCostString,
-          producesMana: scryfallData.producesMana,
-          parsedManaCost: parseScryfallManaCost(scryfallData.manaCostString),
-          colors: scryfallData.colors,
-          typeLine: scryfallData.typeLine,
-          colorIdentity: scryfallData.colorIdentity
-        };
-        setProcessedDeckCards(prev => [...prev, newCard]);
+        const baseId = normalizeCardName(scryfallData.nameScryfall || cardTitle);
+        setProcessedDeckCards(prev => {
+          const existsInTarget = prev.findIndex(
+            c =>
+              (c.name.toLowerCase() === (scryfallData.nameScryfall || cardTitle).toLowerCase() ||
+                c.name.toLowerCase() === cardTitle.toLowerCase()) &&
+              (c.zone || 'mainboard') === targetZone
+          );
+          if (existsInTarget >= 0) {
+            return prev.map((c, i) => (i === existsInTarget ? { ...c, quantity: c.quantity + 1 } : c));
+          }
+          const hasIdCollision = prev.some(c => c.id === baseId);
+          const newCard: ProcessedDeckCard = {
+            id: hasIdCollision ? `${baseId}::${targetZone}` : baseId,
+            name: scryfallData.nameScryfall || cardTitle,
+            quantity: 1,
+            keywords: scryfallData.keywords,
+            text: scryfallData.text || '',
+            imageUrl: scryfallData.imageUrl,
+            manaCostString: scryfallData.manaCostString,
+            producesMana: scryfallData.producesMana,
+            parsedManaCost: parseScryfallManaCost(scryfallData.manaCostString),
+            colors: scryfallData.colors,
+            typeLine: scryfallData.typeLine,
+            colorIdentity: scryfallData.colorIdentity,
+            cmc: scryfallData.cmc,
+            prices: scryfallData.prices,
+            legalities: scryfallData.legalities,
+            edhrecRank: scryfallData.edhrecRank,
+            setCode: scryfallData.setCode,
+            setName: scryfallData.setName,
+            zone: targetZone,
+          };
+          return [...prev, newCard];
+        });
       } else if (typeof cardNameOrItem !== 'string') {
-        const fallbackCard: ProcessedDeckCard = {
-          id: normalizeCardName(cardNameOrItem.title),
-          name: cardNameOrItem.title,
-          quantity: 1,
-          keywords: [cardNameOrItem.primaryType.toLowerCase()],
-          text: cardNameOrItem.typeText,
-          imageUrl: cardNameOrItem.imageUrl,
-          manaCostString: cardNameOrItem.manaCost,
-          colors: cardNameOrItem.colors,
-          typeLine: cardNameOrItem.typeText
-        };
-        setProcessedDeckCards(prev => [...prev, fallbackCard]);
+        const baseId = normalizeCardName(cardNameOrItem.title);
+        setProcessedDeckCards(prev => {
+          const hasIdCollision = prev.some(c => c.id === baseId);
+          const fallbackCard: ProcessedDeckCard = {
+            id: hasIdCollision ? `${baseId}::${targetZone}` : baseId,
+            name: cardNameOrItem.title,
+            quantity: 1,
+            keywords: [cardNameOrItem.primaryType.toLowerCase()],
+            text: cardNameOrItem.typeText,
+            imageUrl: cardNameOrItem.imageUrl,
+            manaCostString: cardNameOrItem.manaCost,
+            colors: cardNameOrItem.colors,
+            colorIdentity: cardNameOrItem.colorIdentity,
+            typeLine: cardNameOrItem.typeText,
+            cmc: cardNameOrItem.cmc,
+            setCode: cardNameOrItem.setCode,
+            zone: targetZone,
+          };
+          return [...prev, fallbackCard];
+        });
       }
     } catch (err) {
       console.error('Failed to add card:', err);
@@ -215,6 +292,72 @@ const App: React.FC = () => {
       setIsLoading(false);
     }
   }, [processedDeckCards]);
+
+  const handleQuantityChange = useCallback((cardId: string, delta: number) => {
+    const targetCard = processedDeckCards.find(c => c.id === cardId);
+    const shouldClearCommander =
+      Boolean(targetCard) &&
+      cardId === commanderId &&
+      (targetCard!.quantity || 1) + delta <= 0;
+
+    setProcessedDeckCards(prev => {
+      const next: ProcessedDeckCard[] = [];
+      for (const card of prev) {
+        if (card.id === cardId) {
+          const newQty = (card.quantity || 1) + delta;
+          if (newQty > 0) {
+            next.push({ ...card, quantity: newQty });
+          }
+        } else {
+          next.push(card);
+        }
+      }
+      return next;
+    });
+    if (shouldClearCommander) {
+      setCommanderId(null);
+    }
+  }, [processedDeckCards, commanderId]);
+
+  const handleSetCommanderFromList = useCallback((cardId: string) => {
+    setCommanderId(cardId);
+    setProcessedDeckCards(prev =>
+      prev.map(c => (c.id === cardId ? { ...c, zone: 'mainboard' as DeckZone } : c))
+    );
+  }, []);
+
+  const handleMoveZone = useCallback((cardId: string, zone: DeckZone) => {
+    setProcessedDeckCards(prev => {
+      const targetCard = prev.find(c => c.id === cardId);
+      if (!targetCard) return prev;
+      const existingInTarget = prev.find(
+        c =>
+          c.id !== cardId &&
+          c.name.toLowerCase() === targetCard.name.toLowerCase() &&
+          (c.zone || 'mainboard') === zone
+      );
+      if (existingInTarget) {
+        return prev
+          .filter(c => c.id !== cardId)
+          .map(c =>
+            c.id === existingInTarget.id
+              ? { ...c, quantity: (c.quantity || 1) + (targetCard.quantity || 1) }
+              : c
+          );
+      }
+      return prev.map(c => (c.id === cardId ? { ...c, zone } : c));
+    });
+    if ((zone === 'considering' || zone === 'sideboard') && commanderId === cardId) {
+      setCommanderId(null);
+    }
+  }, [commanderId]);
+
+  const handleDeleteCard = useCallback((cardId: string) => {
+    setProcessedDeckCards(prev => prev.filter(c => c.id !== cardId));
+    if (commanderId === cardId) {
+      setCommanderId(null);
+    }
+  }, [commanderId]);
 
   const handleCanvasDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -271,15 +414,15 @@ const App: React.FC = () => {
 
   // --- Graph Analysis ---
   const { weaklyConnectedHighlightSet, orphanClusters } = useMemo(() => {
-    if (processedDeckCards.length === 0) return { weaklyConnectedHighlightSet: new Set<string>(), orphanClusters: [] };
+    if (activeMainboardCards.length === 0) return { weaklyConnectedHighlightSet: new Set<string>(), orphanClusters: [] };
 
     const adj = new Map<string, Set<string>>();
-    processedDeckCards.forEach(c => adj.set(c.id, new Set()));
+    activeMainboardCards.forEach(c => adj.set(c.id, new Set()));
 
     const activeKwNames = keywordStyles.filter(k => k.enabled).map(k => k.name.toLowerCase());
-    processedDeckCards.forEach((c1, i) => {
+    activeMainboardCards.forEach((c1, i) => {
       const kw1 = c1.keywords.map(k => k.toLowerCase());
-      processedDeckCards.slice(i + 1).forEach(c2 => {
+      activeMainboardCards.slice(i + 1).forEach(c2 => {
         const kw2 = c2.keywords.map(k => k.toLowerCase());
         const shared = activeKwNames.filter(k => kw1.includes(k) && kw2.includes(k));
         if (shared.length > 0) {
@@ -291,7 +434,7 @@ const App: React.FC = () => {
 
     const components: string[][] = [];
     const visited = new Set<string>();
-    processedDeckCards.forEach(c => {
+    activeMainboardCards.forEach(c => {
       if (!visited.has(c.id)) {
         const comp: string[] = [];
         const q = [c.id];
@@ -332,7 +475,7 @@ const App: React.FC = () => {
     });
 
     return { weaklyConnectedHighlightSet: weaklyConnected, orphanClusters: clusters };
-  }, [processedDeckCards, keywordStyles, commanderId]);
+  }, [activeMainboardCards, keywordStyles, commanderId]);
 
   const updateHistory = useCallback((newCardsSnapshot: ProcessedDeckCard[]) => {
     const newHistoryEntry = [...newCardsSnapshot];
@@ -531,7 +674,7 @@ const App: React.FC = () => {
   }, [zoomLevel]);
 
   useEffect(() => {
-    if (processedDeckCards.length === 0) {
+    if (activeMainboardCards.length === 0) {
       setManaAnalysisData(null);
       return;
     }
@@ -539,7 +682,7 @@ const App: React.FC = () => {
     const pipsRequired: ParsedManaCost = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0, X: 0, Generic: 0 };
     const manaSources: ParsedManaCost = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
 
-    processedDeckCards.forEach(card => {
+    activeMainboardCards.forEach(card => {
       const q = card.quantity || 1;
       const lowerCaseKeywords = card.keywords.map(k => k.toLowerCase());
       const isLand = lowerCaseKeywords.includes('land');
@@ -565,7 +708,7 @@ const App: React.FC = () => {
     });
 
     setManaAnalysisData({ pipsRequired, manaSources });
-  }, [processedDeckCards]);
+  }, [activeMainboardCards]);
 
   const handleShowLargeImage = useCallback((card: ProcessedDeckCard) => {
     setLargeImageModalCard(card);
@@ -603,31 +746,43 @@ const App: React.FC = () => {
   };
 
   const fetchCardDataAndProcess = useCallback(async (
-    cardsToProcess: RawDeckCard[],
+    cardsToProcess: Array<RawDeckCard & { zone?: DeckZone }>,
     onProgressUpdate: (message: string) => void
   ): Promise<ProcessedDeckCard[]> => {
     const newProcessedCards: ProcessedDeckCard[] = [];
-    
-    // 1. Identify cards not in local mock database
-    const cardsToFetchFromScryfall = cardsToProcess.filter(c => !MOCK_CARD_DATABASE[normalizeCardName(c.name)]);
-    
-    // 2. Fetch from Scryfall in batch
-    let scryfallBatchResults: Record<string, any> = {};
-    if (cardsToFetchFromScryfall.length > 0) {
-      scryfallBatchResults = await fetchCardsBatch(cardsToFetchFromScryfall.map(c => c.name), onProgressUpdate);
+    const seenIds = new Set<string>();
+
+    // 1. Prefer Scryfall batch results for all cards so every card gets real prices/legalities
+    let scryfallBatchResults: Record<string, CardGameData> = {};
+    if (cardsToProcess.length > 0) {
+      scryfallBatchResults = await fetchCardsBatch(cardsToProcess.map(c => c.name), onProgressUpdate);
     }
 
-    // 3. Process all cards, falling back to individual fetch (including fuzzy) for missing ones
+    // 2. Process all cards, falling back to individual fuzzy fetch, then case-insensitive MOCK_CARD_DATABASE
     for (const rawCard of cardsToProcess) {
       const normalizedName = normalizeCardName(rawCard.name);
-      let cardData = MOCK_CARD_DATABASE[normalizedName] || scryfallBatchResults[normalizedName] || null;
+      let cardData: CardGameData | null = scryfallBatchResults[normalizedName] || null;
       
       if (!cardData) {
-        // Fallback to individual fetch (fuzzy search) if not found in batch or mock
+        // Fallback to individual fetch (fuzzy search) if not found in batch
         cardData = await fetchCardDataFromScryfall(rawCard.name, onProgressUpdate);
       }
 
-      const idForCard = normalizeCardName(cardData?.nameScryfall || rawCard.name);
+      if (!cardData) {
+        // Final fallback to case-insensitive local mock database
+        cardData = findMockCardData(rawCard.name);
+      }
+
+      const baseId = normalizeCardName(cardData?.nameScryfall || rawCard.name);
+      let idForCard = baseId;
+      if (seenIds.has(idForCard)) {
+        const zoneSuffix = rawCard.zone || 'mainboard';
+        idForCard = seenIds.has(`${baseId}::${zoneSuffix}`)
+          ? `${baseId}::${zoneSuffix}::${newProcessedCards.length}`
+          : `${baseId}::${zoneSuffix}`;
+      }
+      seenIds.add(idForCard);
+
       newProcessedCards.push({
         id: idForCard, 
         name: cardData?.nameScryfall || rawCard.name, 
@@ -641,9 +796,159 @@ const App: React.FC = () => {
         colors: cardData?.colors,
         typeLine: cardData?.typeLine,
         colorIdentity: cardData?.colorIdentity,
+        cmc: cardData?.cmc,
+        prices: cardData?.prices,
+        legalities: cardData?.legalities,
+        edhrecRank: cardData?.edhrecRank,
+        setCode: cardData?.setCode,
+        setName: cardData?.setName,
+        ...(rawCard.zone ? { zone: rawCard.zone } : {}),
       });
     }
     return newProcessedCards;
+  }, []);
+
+  // Hydrate deck on mount: shared URL hash takes priority, otherwise restore auto-saved deck
+  useEffect(() => {
+    let cancelled = false;
+
+    const restoreAutoSaved = () => {
+      const autoSaved = loadAutoSavedDeck();
+      if (autoSaved && autoSaved.cards.length > 0) {
+        pendingSnapshotLabelRef.current = autoSaved.activeDeckName || 'Restored Deck';
+        setProcessedDeckCards(autoSaved.cards);
+        setCommanderId(autoSaved.commanderId);
+        setActiveDeckId(autoSaved.activeDeckId);
+        setActiveDeckName(autoSaved.activeDeckName || 'Untitled Deck');
+      }
+      setIsStorageHydrated(true);
+    };
+
+    const hydrateDeck = async () => {
+      const shared = decodeDeckFromHash(window.location.hash);
+      if (shared && shared.cards.length > 0) {
+        setIsLoading(true);
+        setLoadingDetailMessage('Loading shared deck...');
+        try {
+          const loadedCards = await fetchCardDataAndProcess(shared.cards, setLoadingDetailMessage);
+          if (cancelled) return;
+
+          const resolvedName = shared.deckName || 'Shared Deck';
+          pendingSnapshotLabelRef.current = `Shared: ${resolvedName}`;
+          setProcessedDeckCards(loadedCards);
+          setActiveDeckId(null);
+          setActiveDeckName(resolvedName);
+
+          if (shared.commanderName) {
+            const normCmd = normalizeCardName(shared.commanderName);
+            const matchedCmd = loadedCards.find(
+              c => normalizeCardName(c.name) === normCmd || c.id === normCmd
+            );
+            setCommanderId(matchedCmd ? matchedCmd.id : null);
+          } else {
+            const cmdByZone = loadedCards.find(c => c.zone === 'commander');
+            setCommanderId(cmdByZone ? cmdByZone.id : null);
+          }
+
+          window.history.replaceState(
+            null,
+            document.title,
+            `${window.location.pathname}${window.location.search}`
+          );
+          setIsStorageHydrated(true);
+        } catch (err: any) {
+          if (!cancelled) {
+            console.error('Failed to load shared deck from URL hash:', err);
+            setError(`Failed to load shared deck: ${err?.message || 'Unknown error'}`);
+            // Fall back to restoring any prior auto-saved deck so we never wipe it with []
+            restoreAutoSaved();
+          }
+        } finally {
+          if (!cancelled) {
+            setIsLoading(false);
+          }
+        }
+        return;
+      }
+
+      restoreAutoSaved();
+    };
+
+    hydrateDeck();
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchCardDataAndProcess]);
+
+  // Auto-save working deck whenever cards, commander, or active deck metadata change
+  useEffect(() => {
+    if (!isStorageHydrated) return;
+    saveAutoSavedDeck({
+      cards: processedDeckCards,
+      commanderId,
+      activeDeckId,
+      activeDeckName,
+    });
+  }, [isStorageHydrated, processedDeckCards, commanderId, activeDeckId, activeDeckName]);
+
+  const handleLoadSavedDeck = useCallback((deck: SavedDeck) => {
+    pendingSnapshotLabelRef.current = `Loaded ${deck.name}`;
+    setProcessedDeckCards(deck.cards);
+    setCommanderId(deck.commanderId);
+    setActiveDeckId(deck.id);
+    setActiveDeckName(deck.name);
+    setDrawnSampleHand(null);
+    setSelectedCardInListId(null);
+    setSelectedNodeForPopup(null);
+    setShowDeckLibraryModal(false);
+  }, []);
+
+  const handleSaveCurrentDeck = useCallback((name: string) => {
+    const cleanName = name.trim() || 'Untitled Deck';
+    const isUpdatingActive =
+      Boolean(activeDeckId) &&
+      activeDeckName.trim().toLowerCase() === cleanName.toLowerCase();
+    const saved = saveDeck({
+      id: isUpdatingActive ? activeDeckId! : undefined,
+      name: cleanName,
+      commanderId,
+      cards: processedDeckCards,
+    });
+    if (saved) {
+      setSavedDecks(listSavedDecks());
+      setActiveDeckId(saved.id);
+      setActiveDeckName(saved.name);
+    }
+  }, [activeDeckId, activeDeckName, commanderId, processedDeckCards]);
+
+  const handleDeleteSavedDeck = useCallback((id: string) => {
+    const updated = deleteSavedDeck(id);
+    setSavedDecks(updated);
+    if (activeDeckId === id) {
+      setActiveDeckId(null);
+    }
+  }, [activeDeckId]);
+
+  const handleRenameSavedDeck = useCallback((id: string, newName: string) => {
+    const updated = renameSavedDeck(id, newName);
+    setSavedDecks(updated);
+    if (activeDeckId === id && newName.trim()) {
+      setActiveDeckName(newName.trim());
+    }
+  }, [activeDeckId]);
+
+  const handleNewEmptyDeck = useCallback(() => {
+    pendingSnapshotLabelRef.current = 'New Empty Deck';
+    setProcessedDeckCards([]);
+    setCommanderId(null);
+    setActiveDeckId(null);
+    setActiveDeckName('Untitled Deck');
+    setDrawnSampleHand(null);
+    setSelectedCardInListId(null);
+    setSelectedNodeForPopup(null);
+    setHighlightedKeywords(null);
+    clearAutoSavedDeck();
+    setShowDeckLibraryModal(false);
   }, []);
 
   const processUploadedDeck = useCallback(async (decklistText: string, file: File) => {
@@ -670,10 +975,19 @@ const App: React.FC = () => {
 
       const newProcessedCards = await fetchCardDataAndProcess(parsedCards, setLoadingDetailMessage);
       const isAnimPakalSample = pendingSnapshotLabelRef.current === 'Sample: Anim Pakal';
+      const isSliversSample = pendingSnapshotLabelRef.current === 'Sample: Slivers';
       if (!pendingSnapshotLabelRef.current) {
         pendingSnapshotLabelRef.current = `Loaded ${file.name}`;
       }
       setProcessedDeckCards(newProcessedCards);
+      setActiveDeckId(null);
+      setActiveDeckName(
+        isAnimPakalSample
+          ? 'Anim Pakal (Sample)'
+          : isSliversSample
+            ? 'Slivers (Sample)'
+            : file.name.replace(/\.[^/.]+$/, '') || 'Imported Deck'
+      );
 
       // Auto-select Commander if the first card in the list is a legendary creature/planeswalker
       let detectedCommander: ProcessedDeckCard | null = null;
@@ -683,8 +997,11 @@ const App: React.FC = () => {
           setCommanderId(firstCard.id);
           detectedCommander = firstCard;
         } else {
+          setCommanderId(null);
           detectedCommander = newProcessedCards.find(isLegendaryCommanderCandidate) || null;
         }
+      } else {
+        setCommanderId(null);
       }
 
       if (isAnimPakalSample && newProcessedCards.length > 0) {
@@ -712,28 +1029,28 @@ const App: React.FC = () => {
   }, [handleLoadSampleDeck]);
 
   const handleDrawHand = useCallback(() => {
-    if (processedDeckCards.length === 0) return;
+    if (activeMainboardCards.length === 0) return;
     const flatDeck: ProcessedDeckCard[] = [];
-    processedDeckCards.forEach(card => {
+    activeMainboardCards.forEach(card => {
         for(let i=0; i<card.quantity; i++) flatDeck.push(card);
     });
     const shuffled = shuffleArray(flatDeck);
     setDrawnSampleHand(shuffled.slice(0, 7));
-  }, [processedDeckCards]);
+  }, [activeMainboardCards]);
 
   const findCommanderCard = useMemo(() => {
     if (commanderId) {
-      const found = processedDeckCards.find(c => c.id === commanderId);
+      const found = activeMainboardCards.find(c => c.id === commanderId);
       if (found) return found;
     }
-    return processedDeckCards.find(isLegendaryCommanderCandidate) || null;
-  }, [processedDeckCards, commanderId]);
+    return activeMainboardCards.find(isLegendaryCommanderCandidate) || null;
+  }, [activeMainboardCards, commanderId]);
 
   const handleLoadSpotlightHand = useCallback(() => {
-    if (processedDeckCards.length === 0) return;
-    const hand = getExampleSpotlightHand(processedDeckCards, findCommanderCard);
+    if (activeMainboardCards.length === 0) return;
+    const hand = getExampleSpotlightHand(activeMainboardCards, findCommanderCard);
     setDrawnSampleHand(hand);
-  }, [processedDeckCards, findCommanderCard]);
+  }, [activeMainboardCards, findCommanderCard]);
 
   const handleNodeSelectionChange = useCallback((node: D3Node | null, keywords: string[] | null) => {
     setSelectedNodeForPopup(node);
@@ -747,16 +1064,16 @@ const App: React.FC = () => {
   }, []);
 
   const handleManaStatClick = useCallback((symbol: ManaSymbol, type: 'pipsRequired' | 'manaSources') => {
-    const relevantCards = processedDeckCards.filter(c => 
+    const relevantCards = activeMainboardCards.filter(c => 
       type === 'pipsRequired' ? (c.parsedManaCost?.[symbol] || 0) > 0 : c.producesMana?.includes(symbol)
     );
     setManaListModalContent({ title: `${symbol} ${type}`, cards: relevantCards });
     setShowManaCardListModal(true);
-  }, [processedDeckCards]);
+  }, [activeMainboardCards]);
 
   const handleShowCardsForManaCurveSegment = useCallback((request: ManaCurveModalRequest) => {
     const { cmcLabel, targetColor, isTotalCurve } = request;
-    const filtered = processedDeckCards.filter(c => {
+    const filtered = activeMainboardCards.filter(c => {
       const cmc = getCMC(c.parsedManaCost);
       const isLand = c.keywords.includes('land');
       if (isLand) return false;
@@ -790,7 +1107,7 @@ const App: React.FC = () => {
 
     setManaCurveModalContent({ title, cards: filtered });
     setShowManaCurveCardListModal(true);
-  }, [processedDeckCards]);
+  }, [activeMainboardCards]);
 
   const handlePinSearch = useCallback(() => {
     if (!activeSearchTerm.trim() || pinnedSearches.length >= MAX_PINNED_SEARCHES) return;
@@ -819,7 +1136,7 @@ const App: React.FC = () => {
     setIsLoading(true);
     setLoadingDetailMessage(`Fetching data for "${newCardName}"...`);
     try {
-      const scryfallData = await fetchCardDataFromScryfall(newCardName);
+      const scryfallData = (await fetchCardDataFromScryfall(newCardName)) || findMockCardData(newCardName);
       if (scryfallData) {
         const replacement: ProcessedDeckCard = {
           id: normalizeCardName(scryfallData.nameScryfall || newCardName),
@@ -833,9 +1150,15 @@ const App: React.FC = () => {
           parsedManaCost: parseScryfallManaCost(scryfallData.manaCostString),
           colors: scryfallData.colors,
           typeLine: scryfallData.typeLine,
-          colorIdentity: scryfallData.colorIdentity
+          colorIdentity: scryfallData.colorIdentity,
+          cmc: scryfallData.cmc,
+          prices: scryfallData.prices,
+          legalities: scryfallData.legalities,
+          edhrecRank: scryfallData.edhrecRank,
+          setCode: scryfallData.setCode,
+          setName: scryfallData.setName,
         };
-        setProcessedDeckCards(prev => prev.map(c => c.id === oldCardId ? { ...replacement, quantity: c.quantity } : c));
+        setProcessedDeckCards(prev => prev.map(c => c.id === oldCardId ? { ...replacement, quantity: c.quantity, zone: c.zone } : c));
         if (commanderId === oldCardId) {
           setCommanderId(replacement.id);
         }
@@ -918,6 +1241,20 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2.5">
+            <button
+              onClick={() => setShowDeckLibraryModal(true)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 rounded-lg border border-zinc-800 hover:border-amber-500/40 transition-all text-xs font-medium text-zinc-200 group"
+              title={`Open Deck Library & Share Link (Active: ${activeDeckName})`}
+            >
+              <DocumentIcon className="w-3.5 h-3.5 text-amber-400/90 shrink-0" />
+              <span>Decks</span>
+              {savedDecks.length > 0 && (
+                <span className="px-1.5 py-0.2 rounded bg-zinc-950 text-zinc-400 font-mono text-[10px] border border-zinc-800">
+                  {savedDecks.length}
+                </span>
+              )}
+            </button>
+
             {mtgaCards.length > 0 && (
               <button
                 onClick={() => {
@@ -1109,7 +1446,7 @@ const App: React.FC = () => {
           >
             {activeTab === 'visualizer' ? (
               <DeckVisualizer
-                cards={processedDeckCards}
+                cards={activeMainboardCards}
                 keywordConfig={keywordStyles} 
                 onNodeSelectionChange={handleNodeSelectionChange}
                 onCardKeywordsUpdate={handleCardKeywordsUpdate}
@@ -1123,7 +1460,7 @@ const App: React.FC = () => {
                 singleActiveSearchResultId={singleActiveSearchResultId}
                 onCardImageClick={handleShowLargeImage}
                 orphanClusters={orphanClusters}
-                onDeleteNode={(id) => setProcessedDeckCards(prev => prev.filter(c => c.id !== id))}
+                onDeleteNode={handleDeleteCard}
                 commanderId={commanderId}
                 selectedCardInListId={selectedCardInListId}
                 panToNodeId={panToNodeId}
@@ -1136,15 +1473,17 @@ const App: React.FC = () => {
                 }}
                 onRedrawRandomHand={handleDrawHand}
                 onLoadSpotlightHand={handleLoadSpotlightHand}
+                nodeColorMode={nodeColorMode}
+                onNodeColorModeChange={setNodeColorMode}
               />
             ) : activeTab === 'manaCurve' ? (
               <div className="overflow-y-auto custom-scrollbar flex-grow p-4">
-                 <ManaCurveDashboard deck={processedDeckCards} onShowCardsForSegment={handleShowCardsForManaCurveSegment} />
+                 <ManaCurveDashboard deck={activeMainboardCards} onShowCardsForSegment={handleShowCardsForManaCurveSegment} />
               </div>
             ) : (
               <div className="flex-1 min-h-0 h-full overflow-hidden">
                 <ColorPieMap
-                  currentDeck={processedDeckCards}
+                  currentDeck={activeMainboardCards}
                   snapshots={deckSnapshots}
                   activeSnapshotIndex={activeColorPieSnapshotIndex}
                   onSelectSnapshot={handleSelectColorPieSnapshot}
@@ -1254,8 +1593,11 @@ const App: React.FC = () => {
                         setPanToNodeId(id);
                     }}
                     selectedCardId={selectedCardInListId}
-                    onCardDelete={(id) => setProcessedDeckCards(prev => prev.filter(c => c.id !== id))}
+                    onCardDelete={handleDeleteCard}
                     commanderId={commanderId}
+                    onQuantityChange={handleQuantityChange}
+                    onSetCommander={handleSetCommanderFromList}
+                    onMoveZone={handleMoveZone}
                   />
                 </div>
               )}
@@ -1309,8 +1651,11 @@ const App: React.FC = () => {
                           setPanToNodeId(id);
                       }}
                       selectedCardId={selectedCardInListId}
-                      onCardDelete={(id) => setProcessedDeckCards(prev => prev.filter(c => c.id !== id))}
+                      onCardDelete={handleDeleteCard}
                       commanderId={commanderId}
+                      onQuantityChange={handleQuantityChange}
+                      onSetCommander={handleSetCommanderFromList}
+                      onMoveZone={handleMoveZone}
                     />
                   </div>
 
@@ -1380,7 +1725,7 @@ const App: React.FC = () => {
         potentialCommanders={processedDeckCards.filter(isCardLegendaryCreature).length > 0 ? processedDeckCards.filter(isCardLegendaryCreature) : processedDeckCards}
         currentCommanderId={commanderId}
         onSetCommander={(card) => {
-          setCommanderId(card.id);
+          handleSetCommanderFromList(card.id);
           setShowCommanderSelectionModal(false);
         }}
         onCardImageClick={handleShowLargeImage}
@@ -1414,7 +1759,7 @@ const App: React.FC = () => {
       <GoldfishSimulatorModal
         isOpen={showGoldfishSimulator}
         onClose={() => setShowGoldfishSimulator(false)}
-        deck={processedDeckCards}
+        deck={activeMainboardCards}
         drawnSampleHand={drawnSampleHand}
         commanderId={commanderId}
         onSetCommander={(card) => setCommanderId(card.id)}
@@ -1449,7 +1794,26 @@ const App: React.FC = () => {
       <AddCardModal
         isOpen={showAddCardModal}
         onClose={() => setShowAddCardModal(false)}
-        onAddCard={handleAddCardToVisualizer}
+        onConfirmAdd={(cardName, zone) => {
+          handleAddCardToVisualizer(cardName, zone);
+          setShowAddCardModal(false);
+        }}
+        commanderColorIdentity={commanderColorIdentity}
+      />
+
+      <DeckLibraryModal
+        isOpen={showDeckLibraryModal}
+        onClose={() => setShowDeckLibraryModal(false)}
+        savedDecks={savedDecks}
+        activeDeckId={activeDeckId}
+        currentDeckName={activeDeckName}
+        currentCards={processedDeckCards}
+        currentCommanderId={commanderId}
+        onLoadDeck={handleLoadSavedDeck}
+        onSaveCurrentDeck={handleSaveCurrentDeck}
+        onDeleteDeck={handleDeleteSavedDeck}
+        onRenameDeck={handleRenameSavedDeck}
+        onNewEmptyDeck={handleNewEmptyDeck}
       />
     </div>
   );
